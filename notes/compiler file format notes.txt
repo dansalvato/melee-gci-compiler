@@ -1,0 +1,58 @@
+OPCODES:
+
+!loc 8045f000
+	Denotes where to inject any following data in Melee memory, until the next
+	location is specified.
+!gci 4f50
+	Advanced usage only - lets you specify a GCI offset location rather than a
+	Melee memory location to inject data to. You'll almost always want to use
+	!loc to specify where in Melee memory you want the data to go, rather than
+	worry about where it goes in the GCI.
+!src "path/to/source"
+	Adds the entire contents of a given file to the build script.
+!ascii "This is a text string"
+	Adds a raw text string to Melee memory.
+!asm ... !asmend
+	Compiles the PPC ASM and adds the resulting binary to Melee memory.
+!c2 80380580 ... !c2end
+	Compiles the PPC ASM and wraps it in a Gecko C2 code, then adds the
+	resulting binary to Melee memory.
+!geckocodelist "path/to/codelist.txt"
+	Compiles the Gecko codelist text file, then adds the resulting binary to
+	Melee memory. Gecko codelists have their own format that is not covered
+	here. This opcode is for convenience purposes only for those using Gecko
+	codelist files, but adding your Gecko codes directly into the build script
+	will work equally well, because they're just hex anyway.
+!begin
+	Optionally denotes where the build script begins. Can be used in the main
+	build script or in an external source file. Anything before this line is
+	ignored by the build script. If not specified, the build script begins on
+	the first line of the file.
+!end
+	Optionally denotes where the build script ends. Can be used in the main
+	build script or in an external source file. Anything after this line is
+	ignored by the build script. If not specified, the build script ends on
+	the last line of the file.
+
+
+DATA:
+
+0123456789ABCDEF
+	All standalone hex is written to Melee memory as-is. Whitespace is ignored,
+	so formats like "01 23 45 67" and "c2380580 00000006" are fine too.
+%10010110
+	Lines beginning with '%' denote binary instead of hex.
+# Comment
+	Anything after '#' on a line is a comment and ignored by the compiler.
+/* ... */
+	Multi-line comment. Anything between the comment tags is ignored by the
+	compiler.
+
+
+ARGUMENTS:
+
+-noclean
+	Don't initialize the input GCI to a blank file before writing to it.
+-overlap
+	Don't throw warnings if some of the data writes in your build script
+	overwrite others.
