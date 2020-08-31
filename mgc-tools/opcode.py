@@ -1,0 +1,1 @@
+"""opcode.py: Searches text for opcodes and returns appropriate data"""
