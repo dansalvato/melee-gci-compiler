@@ -2,7 +2,7 @@
 to the compiler when requested."""
 
 class MGCFile:
-	def __init__(filepath, filedata, ref_filepath=None, ref_line_number=None):
+	def __init__(self, filepath, filedata, ref_filepath=None, ref_line_number=None):
 		self.filepath = filepath
 		self.filedata = filedata
 		self.ref_filepath = ref_filepath # The file that sourced this one
