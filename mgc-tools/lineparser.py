@@ -36,10 +36,7 @@ Command = namedtuple('Command', ['name', 'args'], defaults=[None, []])
 SYNTAX_ERROR = Operation('ERROR', "Invalid syntax")
 
 def parse_opcodes(script_line, in_multiline_comment=False):
-    """Parses a script line and returns a list of opcodes and data found.
-       This only checks for syntax and doesn't verify the content of the
-       data, except hex and binary (which the compiler also does,
-       redundantly)."""
+    """Parses a script line and returns a list of opcodes and data found."""
     if in_multiline_comment:
         comment_index = script_line.find('*/')
         if comment_index < 0: return []
@@ -71,6 +68,10 @@ def parse_opcodes(script_line, in_multiline_comment=False):
         script_line = script_line.translate(dict.fromkeys(map(ord, string.whitespace)))
         try:
             int(script_line, 16)
+            padding = len(script_line) % 2
+            if padding > 0:
+                op_list.append(Operation('WARNING', 'Hex data is not byte-aligned; padding to the nearest byte'))
+                script_line = '0' + script_line
             op_list.append(Operation('HEX', script_line))
         except ValueError:
             op_list.append(SYNTAX_ERROR)
@@ -82,6 +83,10 @@ def parse_opcodes(script_line, in_multiline_comment=False):
         script_line = script_line.translate(dict.fromkeys(map(ord, string.whitespace)))
         try:
             int(script_line, 2)
+            padding = len(script_line) % 8
+            if padding > 0:
+                op_list.append(Operation('WARNING', 'Binary data is not byte-aligned; padding to the nearest byte'))
+                script_line = '0' * (8 - padding) + script_line
             op_list.append(Operation('BIN', script_line))
         except ValueError:
             op_list.append(SYNTAX_ERROR)
