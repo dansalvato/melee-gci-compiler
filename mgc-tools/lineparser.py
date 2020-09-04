@@ -1,5 +1,6 @@
 """lineparser.py: Searches text for opcodes and returns appropriate data"""
 import string
+import re
 from collections import namedtuple
 
 CODETYPES = [
@@ -34,28 +35,31 @@ Command = namedtuple('Command', ['name', 'args'], defaults=[None, []])
 # Generic errors
 SYNTAX_ERROR = Operation('ERROR', "Invalid syntax")
 
-def parse_opcodes(script_line, filepath=None, line_number=0):
+def parse_opcodes(script_line, in_multiline_comment=False):
     """Parses a script line and returns a list of opcodes and data found.
        This only checks for syntax and doesn't verify the content of the
        data, except hex and binary (which the compiler also does,
        redundantly)."""
+    if in_multiline_comment:
+        comment_index = script_line.find('*/')
+        if comment_index < 0: return []
+        script_line = script_line[comment_index+2:]
     op_list = []
     multiline_comment = None
     # Trim single-line comments
     comment_index = script_line.find('#')
     if comment_index >= 0: script_line = script_line[:comment_index]
+    # Trim multi-line comments that start and end on the same line
+    script_line = re.sub(r'\/\*.*?\*\/', '', script_line)
     # Trim everything after multi-line comment indicator
     comment_index = script_line.find('/*')
     if comment_index >= 0:
-        # If multiline comment ends on the same line, remove the comment only
-        end_index = script_line.find('*/')
-        if end_index >= 0:
-            script_line = script_line[:comment_index] + script_line[end_index + 2:]
-        else:
-           script_line = script_line[:comment_index]
-           multiline_comment = Operation('MULTILINE_COMMENT')
+       script_line = script_line[:comment_index]
+       multiline_comment = Operation('MULTILINE_COMMENT')
     # Trim whitespace
     script_line = script_line.strip()
+    # Consolidate multiple spaces into one space
+    script_line = re.sub(r'\s+', ' ', script_line)
     # If the line is empty, we're done
     if script_line == '':
         if multiline_comment: op_list.append(multiline_comment)

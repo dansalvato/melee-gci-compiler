@@ -1,7 +1,8 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-from log import *
+from logger import *
+from lineparser import *
 from mgc_file import MGCFile
 
 # The earliest location we can inject data into the GCI
