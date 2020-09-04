@@ -1,4 +1,4 @@
-"""log.py: Formats and logs messages to the console during MGC compilation."""
+"""logger.py: Formats and logs messages to the console during MGC compilation."""
 from enum import Enum
 
 class LogType(Enum):
