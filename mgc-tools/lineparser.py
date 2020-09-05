@@ -35,31 +35,11 @@ Command = namedtuple('Command', ['name', 'args'], defaults=[None, []])
 # Generic errors
 SYNTAX_ERROR = Operation('ERROR', "Invalid syntax")
 
-def parse_opcodes(script_line, in_multiline_comment=False):
+def parse_opcodes(script_line):
     """Parses a script line and returns a list of opcodes and data found."""
-    if in_multiline_comment:
-        comment_index = script_line.find('*/')
-        if comment_index < 0: return []
-        script_line = script_line[comment_index+2:]
     op_list = []
-    multiline_comment = None
-    # Trim single-line comments
-    comment_index = script_line.find('#')
-    if comment_index >= 0: script_line = script_line[:comment_index]
-    # Trim multi-line comments that start and end on the same line
-    script_line = re.sub(r'\/\*.*?\*\/', '', script_line)
-    # Trim everything after multi-line comment indicator
-    comment_index = script_line.find('/*')
-    if comment_index >= 0:
-       script_line = script_line[:comment_index]
-       multiline_comment = Operation('MULTILINE_COMMENT')
-    # Trim whitespace
-    script_line = script_line.strip()
-    # Consolidate multiple spaces into one space
-    script_line = re.sub(r'\s+', ' ', script_line)
     # If the line is empty, we're done
     if script_line == '':
-        if multiline_comment: op_list.append(multiline_comment)
         return op_list
 
     # Check if line is hex
@@ -100,6 +80,7 @@ def parse_opcodes(script_line, in_multiline_comment=False):
             command_args = script_line.split(' ')
             command_name = command_args.pop(0)[1:]
             # If command contains quotes, we ignore command_args
+            # TODO: Enforce correct number of args even if command has quotes
             command_quotes = script_line.split('"')[1::2]
             if command_quotes:
                 # Re-add the quotes so compiler can enforce them
@@ -115,7 +96,6 @@ def parse_opcodes(script_line, in_multiline_comment=False):
         op_list.append(SYNTAX_ERROR)
 
 
-    if multiline_comment: op_list.append(multiline_comment)
     return op_list
 
 def _parse_command(command):
