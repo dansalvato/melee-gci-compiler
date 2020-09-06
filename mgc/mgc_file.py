@@ -1,8 +1,9 @@
 """mgc_file.py: A class that stores the data from an MGC file as a list of
 Operations to execute."""
-from collections import namedtuple
-from lineparser import *
 import re
+from pyiiasmh import ppctools
+from lineparser import *
+from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 
@@ -10,16 +11,23 @@ class MGCFile:
     def __init__(self, filepath, filedata):
         self.filepath = filepath
         self.filedata = self.__preprocess(filedata)
-        self.MGCLines = []
+        self.filedata, self.asm_blocks = self.__preprocess_asm(filedata)
+        self.mgc_lines = []
 
+        asm_block_number = 0
         for line_number, line in enumerate(self.filedata):
             op_list = parse_opcodes(line)
             if op_list:
-                self.MGCLines.append(MGCLine(line_number, op_list))
+                for index, operation in enumerate(op_list):
+                    if operation.codetype != 'COMMAND': continue
+                    if operation.data.name == 'asm' or operation.data.name == 'c2':
+                        op_list[index].data.args.append(asm_block_number)
+                        asm_block_number += 1
+                self.mgc_lines.append(MGCLine(line_number, op_list))
 
 
     def get_lines(self):
-        return self.MGCLines
+        return self.mgc_lines
 
     def __preprocess(self, filedata):
         """Takes MGC file data loaded from disk and strips everything the compiler
@@ -69,3 +77,39 @@ class MGCFile:
         if end_line >= 0:
             for i in range(end_line, len(filedata)): filedata[i] = '' # !end gets wiped too
         return filedata
+
+    def __preprocess_asm(self, filedata):
+        """Takes the preprocessed MGC file data and compiles the ASM using
+           pyiiasmh"""
+        ppctools.setup()
+        asm_blocks = []
+        for line_number, line in enumerate(filedata):
+            op_list = parse_opcodes(line)
+            for operation in op_list:
+                if operation.codetype != 'COMMAND': continue
+                if operation.data.name == 'asm' or operation.data.name == 'c2':
+                    # Send ASM to buffer until asmend/c2end command is reached
+                    asm_buffer = ''
+                    for asm_line_number, asm_line in enumerate(filedata[line_number+1:]):
+                        asm_op_list = parse_opcodes(asm_line)
+                        asm_operation = None
+                        if asm_op_list: asm_operation = asm_op_list[0]
+                        if asm_operation and asm_operation.codetype == 'COMMAND' and \
+                           (operation.data.name == 'asm' and asm_operation.data.name == 'asmend') or \
+                           (operation.data.name == 'c2' and asm_operation.data.name == 'c2end'):
+                           # Compile ASM, store to asm_block
+                           asm_blocks.append(self.__compile_asm_block(asm_buffer))
+                           break
+                        else:
+                            asm_buffer += asm_line + '\n'
+                            filedata[line_number+asm_line_number+1] = ''
+        return filedata, asm_blocks
+
+    def __compile_asm_block(self, asm):
+        """Takes an ASM text string and compiles it to hex using pyiiasmh"""
+        # TODO: Better exception handling
+        root_directory = self.filepath.parent
+        txtfile = root_directory.joinpath('code.txt')
+        with open(txtfile, 'w') as f:
+            f.write(asm)
+        return ppctools.asm_opcodes(root_directory)

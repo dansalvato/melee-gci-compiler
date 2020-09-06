@@ -2,6 +2,10 @@
 notes/
 test gcis/
 *.tmp
+code.bin
+code.txt
+src1.o
+src2.o
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

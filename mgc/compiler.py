@@ -107,6 +107,7 @@ def _process_warning(data, mgc_file, line_number):
     return
 def _process_error(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('ERROR', data, mgc_file, line_number)
     return
 
 
@@ -142,6 +143,8 @@ def _cmd_process_string(data, mgc_file, line_number):
     return
 def _cmd_process_asm(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    asm_block_num = int(data[0])
+    _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
     return
 def _cmd_process_asmend(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
