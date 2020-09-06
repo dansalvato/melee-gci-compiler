@@ -2,13 +2,14 @@
 Operations to execute."""
 from collections import namedtuple
 from lineparser import *
+import re
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 
 class MGCFile:
     def __init__(self, filepath, filedata):
         self.filepath = filepath
-        self.filedata = __preprocess(filedata)
+        self.filedata = self.__preprocess(filedata)
         self.MGCLines = []
 
         for line_number, line in enumerate(self.filedata):
@@ -43,9 +44,9 @@ class MGCFile:
                 line = line[:comment_index]
                 multiline_comment = True
             # Trim whitespace
-            script_line = script_line.strip()
+            line = line.strip()
             # Consolidate multiple spaces into one space
-            script_line = re.sub(r'\s+', ' ', script_line)
+            line = re.sub(r'\s+', ' ', line)
 
             # Look for !begin and !end
             op_list = parse_opcodes(line)

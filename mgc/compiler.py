@@ -46,16 +46,24 @@ mgc_stack = []
 # The directory of the root MGC file
 root_directory = ""
 
+def compile(root_mgc_path):
+    """Main compile routine: Takes a root MGC file path and compiles all data"""
+    # Set root directory
+    root_mgc_path = Path(root_mgc_path).absolute()
+    root_directory = root_mgc_path.parent
+    # Load all src files into mgc_filedata
+    load_all_mgc_files(root_mgc_path)
+    return mgc_filedata
+
 def load_mgc_file(filepath):
     """Loads a MGC file from disk and stores its data in mgc_filedata"""
     if filepath in mgc_filedata: return [] # Do nothing if the file is already loaded
     filedata = []
+    parent = filepath.parent
     with filepath.open('r') as f:
         filedata = f.readlines()
-    # Preprocess file
-    filedata = preprocess_mgc_file(filedata)
     # Store file data
-    mgc_filedata[filepath] = filedata
+    mgc_filedata[filepath] = MGCFile(filepath, filedata)
     # See if the new file sources any additional files we need to load
     # TODO: Handle binary files and geckocodelist files
     additional_files = []
@@ -64,7 +72,7 @@ def load_mgc_file(filepath):
         for operation in op_list:
             if operation.codetype != 'COMMAND': continue
             if operation.data.name != 'src': continue
-            additional_files.append(Path(root_directory + operation.data.args[0]).absolute())
+            additional_files.append(parent.joinpath(operation.data.args[0]))
     return additional_files
 
 def load_all_mgc_files(root_filepath):
@@ -72,4 +80,4 @@ def load_all_mgc_files(root_filepath):
     additional_files = load_mgc_file(root_filepath)
     # This shouldn't infinite loop because already-loaded files return None
     for path in additional_files:
-        additional_files.append(load_mgc_file(path))
+        additional_files += load_mgc_file(path)
