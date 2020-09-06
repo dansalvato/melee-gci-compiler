@@ -1,6 +1,5 @@
 """lineparser.py: Searches text for opcodes and returns appropriate data"""
 import string
-import re
 from collections import namedtuple
 
 CODETYPES = [
@@ -17,6 +16,7 @@ COMMANDS = {
     # List of each command and its expected number and type of args
     'loc': [int],
     'gci': [int],
+    'add': [int],
     'src': [str],
     'file': [str],
     'geckocodelist': [str],
