@@ -3,6 +3,7 @@ to the GCI."""
 from pathlib import Path
 import logger
 from logger import log
+from errors import *
 from lineparser import *
 from mgc_file import MGCFile
 from gci_tools.mem2gci import *
@@ -13,11 +14,9 @@ GCI_START_OFFSET = 0x2060
 # The total size of a Melee GCI - this gets replaced by our input GCI file
 gci_data = bytearray(0x16040)
 
-# The latest !loc pointer
+# The latest !loc and !gci pointers
 loc_pointer = 0
 gci_pointer = 0
-
-# This is True if the !gci opcode was used
 gci_pointer_mode = False
 
 # A dict that contains all loaded MGC filedata, accessible by filename.
@@ -57,7 +56,7 @@ def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
     """Compiles the data of a single file; !src makes this function recursive"""
     log('INFO', f"Compiling {mgc_file.filepath.name}", ref_mgc_file, ref_line_number)
     if mgc_file in mgc_stack:
-        raise ValueError("MGC files are sourcing each other in an infinite loop")
+        raise CompileError("MGC files are sourcing each other in an infinite loop", mgc_file)
     mgc_stack.append(mgc_file)
     for line in mgc_file.get_lines():
         for op in line.op_list:
@@ -100,11 +99,14 @@ def _write_data(data, mgc_file, line_number):
     if gci_pointer_mode:
         log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
         if gci_pointer + len(data) > len(gci_data):
-            raise IndexError("Attempting to write past the end of the GCI")
+            raise CompileError("Attempting to write past the end of the GCI", mgc_file, line_number)
         write_table = [(gci_pointer, len(data))]
     else:
         log('DEBUG', f"Writing 0x{len(data):x} bytes in loc mode:", mgc_file, line_number)
-        write_table = data2gci(loc_pointer, len(data))
+        try:
+            write_table = data2gci(loc_pointer, len(data))
+        except ValueError as e:
+            raise CompileError(e, mgc_file, line_number)
     data_pointer = 0
     for entry in write_table:
         gci_pointer, data_length = entry
@@ -131,10 +133,11 @@ def _process_command(data, mgc_file, line_number):
     return
 def _process_warning(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('WARNING', data, mgc_file, line_number)
     return
 def _process_error(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
-    log('ERROR', data, mgc_file, line_number)
+    raise CompileError(data, mgc_file, line_number)
     return
 
 

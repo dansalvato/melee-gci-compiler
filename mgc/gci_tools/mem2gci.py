@@ -38,7 +38,7 @@ def mem2gci_tuple(mem_address: int) -> Tuple[int, int]:
     """Takes a Melee memory address and returns the corresponding unpacked GCI
        block number and offset."""
     if mem_address < MEM_START or mem_address >= MEM_END:
-        raise ValueError("Melee address 0x%08x does not have a corresponding GCI location." % mem_address)
+        raise ValueError("Melee address 0x%08x does not have a corresponding GCI location" % mem_address)
     block_number = -1
     offset = 0
     for index, block_address in enumerate(MEM_LIST):
@@ -47,7 +47,7 @@ def mem2gci_tuple(mem_address: int) -> Tuple[int, int]:
         block_number = index
         break
     if block_number < 0:
-        raise ValueError("Melee address 0x%08x does not have a corresponding GCI location." % mem_address)
+        raise ValueError("Melee address 0x%08x does not have a corresponding GCI location" % mem_address)
     return block_number, offset
 
 def mem2gci(mem_address: int) -> int:
@@ -60,7 +60,7 @@ def gci2mem(gci_address: int) -> int:
     """Takes a GCI offset address and returns the corresponding Melee memory
        location."""
     if gci_address < BLOCK_START or gci_address >= BLOCK_END:
-        raise ValueError("GCI address 0x%05x does not have a corresponding Melee memory location." % gci_address)
+        raise ValueError("GCI address 0x%05x does not have a corresponding Melee memory location" % gci_address)
     block_number = -1
     offset = 0
     for index, block_address in enumerate(BLOCK_LIST):
@@ -69,7 +69,7 @@ def gci2mem(gci_address: int) -> int:
         block_number = index
         break
     if block_number < 0:
-        raise ValueError("GCI address 0x%05x does not have a corresponding Melee memory location." % gci_address)
+        raise ValueError("GCI address 0x%05x does not have a corresponding Melee memory location" % gci_address)
     return MEM_LIST[block_number] + offset
 
 def data2gci(mem_start_address: int, data_length: int) -> List[Tuple[int, int]]:
@@ -80,9 +80,9 @@ def data2gci(mem_start_address: int, data_length: int) -> List[Tuple[int, int]]:
     if data_length <= 0:
         raise ValueError("Data length must be greater than 0.")
     if mem_start_address < MEM_START:
-        raise ValueError("Start address 0x%08x is not present in the GCI; earliest possible start address is 0x%08x." % (mem_start_address, MEM_START))
+        raise ValueError("Start address 0x%08x is not present in the GCI; earliest possible start address is 0x%08x" % (mem_start_address, MEM_START))
     if mem_start_address + data_length > MEM_END:
-        raise ValueError("Data ends at 0x%08x which overflows the last address present in the GCI (0x%08x)." % (mem_start_address + data_length, MEM_END))
+        raise ValueError("Data ends at 0x%08x which overflows the last address present in the GCI (0x%08x)" % (mem_start_address + data_length, MEM_END))
     current_address = mem_start_address
     remaining_data = data_length
     gci_list: List[Tuple[int, int]] = []

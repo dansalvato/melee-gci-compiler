@@ -15,6 +15,11 @@ def log(logtype, message, mgc_file=None, line_number=None):
     number."""
     global silent_log
     if silent_log: return
+    message = format_log(logtype, message, mgc_file, line_number)
+    print(message)
+    return
+
+def format_log(logtype, message, mgc_file=None, line_number=None):
     if logtype not in LOGTYPE_NAMES:
         raise ValueError("Attempted to log with an unknown logtype.")
     file_string = ''
@@ -25,9 +30,8 @@ def log(logtype, message, mgc_file=None, line_number=None):
         if len(file_string) > MAX_FILE_STRING_LENGTH:
             root_string = filepath.parts[0]
             file_string = root_string + "..." + file_string[-(MAX_FILE_STRING_LENGTH-3) + len(root_string):]
-        if line_number:
+        if line_number != None:
             line_string = ", Line " + str(line_number + 1)
         file_string = '[' + file_string + line_string + '] '
     message = f"[{logtype}]   {file_string}{message}"
-    print(message)
-    return
+    return message

@@ -4,6 +4,7 @@ import re
 from pyiiasmh import ppctools
 from lineparser import *
 from collections import namedtuple
+from errors import *
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 
@@ -19,6 +20,8 @@ class MGCFile:
             op_list = parse_opcodes(line)
             if op_list:
                 for index, operation in enumerate(op_list):
+                    if operation.codetype == 'ERROR':
+                        raise CompileError(operation.data, self, line_number)
                     if operation.codetype != 'COMMAND': continue
                     if operation.data.name == 'asm' or operation.data.name == 'c2':
                         op_list[index].data.args.append(asm_block_number)
@@ -68,10 +71,8 @@ class MGCFile:
             filedata[line_number] = line
 
         # Wipe everything before !begin and after !end
-        # TODO: Make this a better error
-        # Errors should show relative path if in root directory, absolute path otherwise
         if begin_line >= 0 and end_line >= 0:
-            if end_line <= begin_line: raise IndexError("!end Command appears before !begin Command")
+            if end_line <= begin_line: raise CompileError("!end Command appears before !begin Command", self, end_line)
         if begin_line >= 0:
             for i in range(begin_line+1): filedata[i] = '' # !begin gets wiped too
         if end_line >= 0:
@@ -88,6 +89,7 @@ class MGCFile:
                 if operation.codetype != 'COMMAND': continue
                 if operation.data.name == 'asm' or operation.data.name == 'c2':
                     # Send ASM to buffer until asmend/c2end command is reached
+                    # TODO: Handle exception for missing asmend/c2end
                     asm_buffer = ''
                     for asm_line_number, asm_line in enumerate(filedata[line_number+1:]):
                         asm_op_list = parse_opcodes(asm_line)
