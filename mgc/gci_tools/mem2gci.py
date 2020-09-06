@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """mem2gci.py: Translates Melee memory addresses to their corresponding location in an unpacked GCI, and vice-versa."""
 
 from typing import List, Tuple

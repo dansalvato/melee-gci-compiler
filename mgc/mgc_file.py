@@ -18,6 +18,8 @@ class MGCFile:
                 self.MGCLines.append(MGCLine(line_number, op_list))
 
 
+    def get_lines(self):
+        return self.MGCLines
 
     def __preprocess(self, filedata):
         """Takes MGC file data loaded from disk and strips everything the compiler

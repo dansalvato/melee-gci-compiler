@@ -3,9 +3,6 @@ import string
 from collections import namedtuple
 
 CODETYPES = [
-    'COMMENT',
-    'MULTILINE_COMMENT',
-    'MULTILINE_END',
     'BIN',
     'HEX',
     'COMMAND',
