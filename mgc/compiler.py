@@ -14,26 +14,10 @@ gci_data = bytearray(0x16040)
 
 # The latest !loc pointer
 loc_pointer = 0
+gci_pointer = 0
 
 # This is True if the !gci opcode was used
 gci_pointer_mode = False
-gci_pointer = 0
-
-# Dict that contains each opcode name and the function that handles it
-OPCODES = {
-    'loc': None,
-    'gci': None,
-    'src': None,
-    'file': None,
-    'ascii': None,
-    'asm': None,
-    'asmend': None,
-    'c2': None,
-    'c2end': None,
-    'geckocodelist': None,
-    'begin': None, # Compiler only finds this if defined twice; log warning
-    'end': None, # Compiler only finds this if defined twice; log warning
-    }
 
 # A dict that contains all loaded MGC filedata, accessible by filename.
 # We load all MGC files from disk ahead of time and use this dict to send
@@ -55,6 +39,8 @@ def compile(root_mgc_path):
     _load_all_mgc_files(root_mgc_path)
     # Begin compile
     _compile_file(mgc_files[root_mgc_path])
+    with open("temp.gci", 'wb') as f:
+        f.write(gci_data)
     return
 
 def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
@@ -101,48 +87,81 @@ def _load_all_mgc_files(root_filepath):
 
 
 def _process_bin(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _process_hex(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    data = bytearray.fromhex(data)
+    if gci_pointer_mode:
+        if gci_pointer + len(data) > len(gci_data):
+            raise IndexError("Attempting to write past the end of the GCI")
+        gci_data[gci_pointer:gci_pointer+len(data)] = data
+        gci_pointer += len(data)
     return
 def _process_command(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     COMMAND_FUNCS[data.name](data.args, mgc_file, line_number)
     return
 def _process_warning(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _process_error(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 
 
 
 def _cmd_process_loc(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    gci_pointer_mode = False
+    loc_pointer = data[0]
     return
 def _cmd_process_gci(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    gci_pointer_mode = True
+    gci_pointer = data[0]
     return
 def _cmd_process_add(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    if gci_pointer_mode: gci_pointer += data[0]
+    else: loc_pointer += data[0]
     return
 def _cmd_process_src(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     file = mgc_file.filepath.parent.joinpath(data[0])
     _compile_file(mgc_files[file], mgc_file, line_number)
     return
 def _cmd_process_file(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_geckocodelist(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_string(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_asm(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_asmend(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_c2(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_c2end(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 def _cmd_process_begin(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('WARNING', "!begin is used more than once; ignoring this one", mgc_file, line_number)
     return
 def _cmd_process_end(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('WARNING', "!end is used more than once; ignoring this one", mgc_file, line_number)
     return
 def _cmd_process_echo(data, mgc_file, line_number):
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     return
 
 
