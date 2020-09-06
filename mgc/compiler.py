@@ -84,19 +84,36 @@ def _load_all_mgc_files(root_filepath):
 
 
 
+def _write_data(data, mgc_file, line_number):
+    """Writes a byte array to the GCI"""
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    if gci_pointer_mode:
+        log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
+        if gci_pointer + len(data) > len(gci_data):
+            raise IndexError("Attempting to write past the end of the GCI")
+        write_table = [(gci_pointer, len(data))]
+    else:
+        log('DEBUG', f"Writing 0x{len(data):x} bytes in loc mode:", mgc_file, line_number)
+        write_table = data2gci(loc_pointer, len(data))
+    data_pointer = 0
+    for entry in write_table:
+        gci_pointer, data_length = entry
+        log('DEBUG', f"        0x{data_length:x} bytes to 0x{gci_pointer:x}", mgc_file, line_number)
+        gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_length]
+        data_pointer += data_length
 
+
+    return
 
 def _process_bin(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    data_hex = format(int(data, 2), 'x')
+    _process_hex(data_hex, mgc_file, line_number)
     return
 def _process_hex(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     data = bytearray.fromhex(data)
-    if gci_pointer_mode:
-        if gci_pointer + len(data) > len(gci_data):
-            raise IndexError("Attempting to write past the end of the GCI")
-        gci_data[gci_pointer:gci_pointer+len(data)] = data
-        gci_pointer += len(data)
+    _write_data(data, mgc_file, line_number)
     return
 def _process_command(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode

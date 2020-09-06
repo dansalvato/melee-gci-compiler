@@ -220,7 +220,7 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
 
     numlines = ("%08x" % numlines).upper()
     if ctype == "C0":
-        pre = "C0000000 %s" % (numlines)
+        pre = "C0000000%s" % (numlines)
         post = "4E800020" + post[8:]
         return pre + rawhex + post
     else:
