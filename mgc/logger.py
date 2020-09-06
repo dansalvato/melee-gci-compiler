@@ -8,10 +8,13 @@ LOGTYPE_NAMES = [
     ]
 
 MAX_FILE_STRING_LENGTH = 30
+silent_log = False
 
 def log(logtype, message, mgc_file=None, line_number=None):
     """Prints a log message to the console with the relevant MGC file and line
     number."""
+    global silent_log
+    if silent_log: return
     if logtype not in LOGTYPE_NAMES:
         raise ValueError("Attempted to log with an unknown logtype.")
     file_string = ''
@@ -27,3 +30,4 @@ def log(logtype, message, mgc_file=None, line_number=None):
         file_string = '[' + file_string + line_string + '] '
     message = f"[{logtype}]   {file_string}{message}"
     print(message)
+    return

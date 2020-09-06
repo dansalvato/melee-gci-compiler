@@ -1,7 +1,8 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-from logger import *
+import logger
+from logger import log
 from lineparser import *
 from mgc_file import MGCFile
 from gci_tools.mem2gci import *
@@ -30,8 +31,16 @@ mgc_stack = []
 # The directory of the root MGC file
 root_directory = ""
 
-def compile(root_mgc_path):
+def compile(root_mgc_path, silent=False, noclean=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
+    logger.silent_log = silent
+    if not noclean:
+        # Compile init_gci.mgc which writes the data found in a clean save file
+        # TODO: Zero out all block data before this step
+        log('INFO', "Initializing GCI")
+        gci_data[GCI_START_OFFSET:] = bytearray(len(gci_data) - GCI_START_OFFSET)
+        compile(Path(__file__).parent/"init_gci"/"init_gci.mgc", silent=True, noclean=True)
+    logger.silent_log = silent
     # Set root directory
     root_mgc_path = Path(root_mgc_path).absolute()
     root_directory = root_mgc_path.parent
@@ -39,6 +48,7 @@ def compile(root_mgc_path):
     _load_all_mgc_files(root_mgc_path)
     # Begin compile
     _compile_file(mgc_files[root_mgc_path])
+    # Temporary write routine for testing
     with open("temp.gci", 'wb') as f:
         f.write(gci_data)
     return
@@ -184,6 +194,7 @@ def _cmd_process_end(data, mgc_file, line_number):
     return
 def _cmd_process_echo(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('INFO', data[0])
     return
 
 
