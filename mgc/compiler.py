@@ -151,6 +151,8 @@ def _cmd_process_asmend(data, mgc_file, line_number):
     return
 def _cmd_process_c2(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    asm_block_num = int(data[1])
+    _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
     return
 def _cmd_process_c2end(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode

@@ -6,6 +6,7 @@ code.bin
 code.txt
 src1.o
 src2.o
+test.mgc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

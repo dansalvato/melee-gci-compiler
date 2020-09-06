@@ -20,7 +20,7 @@ COMMANDS = {
     'string': [str],
     'asm': [],
     'asmend': [],
-    'c2': [str],
+    'c2': [int],
     'c2end': [],
     'begin': [],
     'end': [],

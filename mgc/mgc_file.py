@@ -81,7 +81,6 @@ class MGCFile:
     def __preprocess_asm(self, filedata):
         """Takes the preprocessed MGC file data and compiles the ASM using
            pyiiasmh"""
-        ppctools.setup()
         asm_blocks = []
         for line_number, line in enumerate(filedata):
             op_list = parse_opcodes(line)
@@ -94,22 +93,28 @@ class MGCFile:
                         asm_op_list = parse_opcodes(asm_line)
                         asm_operation = None
                         if asm_op_list: asm_operation = asm_op_list[0]
-                        if asm_operation and asm_operation.codetype == 'COMMAND' and \
-                           (operation.data.name == 'asm' and asm_operation.data.name == 'asmend') or \
-                           (operation.data.name == 'c2' and asm_operation.data.name == 'c2end'):
-                           # Compile ASM, store to asm_block
-                           asm_blocks.append(self.__compile_asm_block(asm_buffer))
-                           break
-                        else:
-                            asm_buffer += asm_line + '\n'
-                            filedata[line_number+asm_line_number+1] = ''
+                        if asm_operation:
+                            if asm_operation.codetype == 'COMMAND':
+                                if (operation.data.name == 'asm' and asm_operation.data.name == 'asmend') or \
+                                   (operation.data.name == 'c2' and asm_operation.data.name == 'c2end'):
+                                   # Compile ASM, store to asm_block
+                                   c2 = True if operation.data.name == 'c2' else False
+                                   asm_blocks.append(self.__compile_asm_block(asm_buffer, c2, operation.data.args[0]))
+                                   break
+                        asm_buffer += asm_line + '\n'
+                        filedata[line_number+asm_line_number+1] = ''
         return filedata, asm_blocks
 
-    def __compile_asm_block(self, asm):
+    def __compile_asm_block(self, asm, c2=False, c2_ba=None):
         """Takes an ASM text string and compiles it to hex using pyiiasmh"""
         # TODO: Better exception handling
         root_directory = self.filepath.parent
         txtfile = root_directory.joinpath('code.txt')
         with open(txtfile, 'w') as f:
             f.write(asm)
-        return ppctools.asm_opcodes(root_directory)
+        compiled_asm = ppctools.asm_opcodes(root_directory)
+        if c2:
+            c2_ba = "%08x" % c2_ba
+            compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
+
+        return compiled_asm

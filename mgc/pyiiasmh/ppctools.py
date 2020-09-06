@@ -211,18 +211,16 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
     if ctype is None:
         return rawhex
 
-    numlines = ("%x" % len(rawhex.split("\n"))).upper()
-    leading_zeros = []
-    for i in range(8 - (int(numlines, 16) // 16 + 1)):
-        leading_zeros.append("0")
+    numlines = int(len(rawhex) / 16) + 1
 
-    if rawhex[-1] == " ":
+    if len(rawhex) % 16 > 0:
         post = "00000000"
     else:
-        post = "60000000 00000000"
+        post = "6000000000000000"
 
+    numlines = ("%08x" % numlines).upper()
     if ctype == "C0":
-        pre = "C0000000 %s%s\n" % ("".join(leading_zeros), numlines)
+        pre = "C0000000 %s" % (numlines)
         post = "4E800020" + post[8:]
         return pre + rawhex + post
     else:
@@ -231,12 +229,12 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
 
         pre = {"8":"C", "0":"D"}.get(bapo[0], "C")
         if bapo[1] == "1":
-            pre += "3" + bapo[2:] + " "
+            pre += "3" + bapo[2:]# + " "
         else:
-            pre += "2" + bapo[2:] + " "
+            pre += "2" + bapo[2:]# + " "
         
         if ctype == "C2D2":
-            pre += "".join(leading_zeros) + numlines + "\n"
+            pre += numlines
             return pre + rawhex + post
         else: # ctype == "F2F4"
             if int(numlines, 16) <= 0xFF:
@@ -244,7 +242,7 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
                if int(numlines, 16) <= 0xF:
                    numlines = "0"+numlines
 
-               pre += bapo[2:] + " " + chksum + xor + numlines + "\n"
+               pre += bapo[2:] + " " + chksum + xor + numlines# + "\n"
                return pre + rawhex + post
             else:
                raise CodetypeError("Number of lines (" + 
