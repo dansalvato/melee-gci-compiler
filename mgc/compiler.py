@@ -59,10 +59,12 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
         # Compile init_gci.mgc which writes the data found in a clean save file
         # TODO: Zero out all block data before this step
         log('INFO', "Initializing GCI")
-        gci_data[GCI_START_OFFSET:] = bytearray(len(gci_data) - GCI_START_OFFSET)
-        compile(Path(__file__).parent/"init_gci"/"init_gci.mgc", silent=True, noclean=True)
-    logger.silent_log = silent
-    logger.debug_log = debug
+        for i in range(10):
+            data_pointer = GCI_START_OFFSET + (i * 0x2000)
+            gci_data[data_pointer:data_pointer+0x1f2c] = bytearray(0x1f2c)
+        init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
+        _load_all_mgc_files(init_gci_path)
+        _compile_file(mgc_files[init_gci_path])
     write_history = []
     # Set root directory
     root_mgc_path = Path(root_mgc_path).absolute()
@@ -75,6 +77,7 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
     if input_gci:
         log('INFO', "Packing GCI")
         input_gci.raw_bytes = gci_data
+        input_gci.recompute_checksums()
         input_gci.pack()
         return input_gci.raw_bytes
     else: return gci_data
@@ -174,9 +177,9 @@ def _write_data(data, mgc_file, line_number):
     data_pointer = 0
     _check_write_history(write_table, mgc_file, line_number)
     for entry in write_table:
-        gci_pointer, data_length = entry
-        log('DEBUG', f"        0x{data_length:x} bytes to 0x{gci_pointer:x}", mgc_file, line_number)
-        gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_pointer+data_length]
+        pointer, data_length = entry
+        log('DEBUG', f"        0x{data_length:x} bytes to 0x{pointer:x}", mgc_file, line_number)
+        gci_data[pointer:pointer+data_length] = data[data_pointer:data_pointer+data_length]
         data_pointer += data_length
     write_history.append((write_table, mgc_file, line_number))
     return

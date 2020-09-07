@@ -15,7 +15,7 @@ def log(logtype, message, mgc_file=None, line_number=None):
     """Prints a log message to the console with the relevant MGC file and line
     number."""
     global silent_log, debug_log
-    if silent_log: return
+    if silent_log == True and debug_log == False: return
     if debug_log == False and logtype == 'DEBUG': return
     message = format_log(logtype, message, mgc_file, line_number)
     print(message)

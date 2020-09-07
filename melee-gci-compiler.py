@@ -5,6 +5,7 @@
 import sys, getopt
 from pathlib import Path
 from mgc import compiler
+import mgc.logger as logger
 from mgc.logger import log
 from mgc.errors import CompileError
 
@@ -28,6 +29,7 @@ def main(argv):
     noclean = False
     silent = False
     debug = False
+    logger.silent_log = silent
     try:
         opts, args = getopt.getopt(argv[1:],'i:o:h',['help','noclean','silent','debug'])
     except getopt.GetoptError:
@@ -51,20 +53,25 @@ def main(argv):
             sys.exit(2)
 
     try:
-        compiler.compile(script_path, input_gci=input_gci, noclean=noclean, silent=silent, debug=debug)
+        gci_data = compiler.compile(script_path, input_gci=input_gci, noclean=noclean, silent=silent, debug=debug)
     except CompileError as e:
-        if debug: pass
+        if debug: raise
         else:
             print(e)
             sys.exit(10)
-    if not silent:
-        log('INFO', "Compile successful")
-        if not output_gci:
-            log('INFO', "No output GCI specified; no files will be written")
-        elif not input_gci:
-            log('INFO', "No input GCI specified; writing raw data to file")
-        else:
-            log('INFO', "Writing final GCI file")
+    log('INFO', "Compile successful")
+    if not output_gci: log('INFO', "No output GCI specified; no files will be written")
+    elif not input_gci: log('INFO', "No input GCI specified; writing raw data to file")
+    else: log('INFO', "Writing final GCI file")
+    if output_gci:
+        try:
+            with open(output_gci, 'wb') as f:
+                f.write(gci_data)
+        except Exception as e:
+            if debug: raise
+            else: log('ERROR', f"Couldn't write GCI file: {e}")
+    log('INFO', "Successfully finished all tasks")
+    sys.exit()
 
 
 

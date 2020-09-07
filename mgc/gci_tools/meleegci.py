@@ -15,14 +15,12 @@ class melee_gci(object):
         self._filename = os.path.basename(filename).split(".")[0]
         self.raw_bytes = bytearray()
         try:
-            self.fd = open(filename, "rb")
-            self.filesize = os.stat(filename).st_size
-            self.raw_bytes = bytearray(self.fd.read(self.filesize))
-            self.fd.seek(0x0)
+            with open(filename, "rb") as fd:
+                self.raw_bytes = bytearray(fd.read())
+            self.filesize = len(self.raw_bytes)
             log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
         except FileNotFoundError as e:
             err(e)
-            self.fd = None
             self.raw_bytes = None
             self.filesize = None
             return None
