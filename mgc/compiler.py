@@ -1,7 +1,7 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-from . import logger
+from . import logger, mgc_file
 from .logger import log
 from .errors import *
 from .lineparser import *
@@ -34,14 +34,18 @@ mgc_stack = []
 # more than once
 write_history = []
 
-# The directory of the root MGC file
-root_directory = ""
-
 def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
     global write_history, gci_data
     logger.silent_log = silent
     logger.debug_log = debug
+    # Set root directory
+    root_mgc_path = Path(root_mgc_path).absolute()
+    mgc_file.tmp_directory = root_mgc_path.parent/"tmp"
+    try:
+        mgc_file.tmp_directory.mkdir(exist_ok=True)
+    except FileNotFoundError:
+        raise CompileError("Unable to create tmp directory")
     if input_gci:
         log('INFO', "Loading and unpacking input GCI")
         try:
@@ -70,9 +74,6 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
         _compile_file(mgc_files[init_gci_path])
         logger.silent_log = silent
     write_history = []
-    # Set root directory
-    root_mgc_path = Path(root_mgc_path).absolute()
-    root_directory = root_mgc_path.parent
     # Load all src files into mgc_files
     _load_all_mgc_files(root_mgc_path)
     # Begin compile

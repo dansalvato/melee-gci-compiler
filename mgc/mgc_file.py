@@ -7,6 +7,7 @@ from .errors import *
 from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
+tmp_directory = None
 
 class File:
     def __init__(self, filepath, filedata):
@@ -17,11 +18,10 @@ class File:
         """Takes an ASM text string and compiles it to hex using pyiiasmh"""
         # TODO: Better exception handling
         # TODO: Make sure temp files always write to root MGC path
-        root_directory = self.filepath.parent
-        txtfile = root_directory.joinpath('code.txt')
+        txtfile = tmp_directory/"code.txt"
         with open(txtfile, 'w') as f:
             f.write(asm)
-        compiled_asm = ppctools.asm_opcodes(root_directory)
+        compiled_asm = ppctools.asm_opcodes(tmp_directory)
         if c2:
             c2_ba = "%08x" % c2_ba
             compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
