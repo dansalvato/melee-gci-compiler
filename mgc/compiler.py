@@ -114,7 +114,6 @@ def _load_mgc_file(filepath):
     # Store file data
     mgc_files[filepath] = MGCFile(filepath, filedata)
     # See if the new file sources any additional files we need to load
-    # TODO: Handle binary files and geckocodelist files
     additional_files = []
     for line in filedata:
         op_list = parse_opcodes(line)

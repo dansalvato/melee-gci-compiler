@@ -17,7 +17,6 @@ class File:
     def compile_asm_block(self, asm, c2=False, c2_ba=None):
         """Takes an ASM text string and compiles it to hex using pyiiasmh"""
         # TODO: Better exception handling
-        # TODO: Make sure temp files always write to root MGC path
         txtfile = tmp_directory/"code.txt"
         with open(txtfile, 'w') as f:
             f.write(asm)
