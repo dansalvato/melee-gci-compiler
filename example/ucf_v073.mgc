@@ -1,0 +1,48 @@
+UCF v0.73 MGC SCRIPT
+
+Welcome to this example MGC script. This script compiles a save file containing
+the UCF codeset. You can find more information on each of the script components
+by reading through the MGC files in the ucf_data folder.
+
+The save file has three main components:
+1. The ACE exploit that runs our custom code when entering "Name Entry" in Melee
+2. The custom data we want to load, such as the Gecko codehandler and codeset
+3. The datacopy table, which tells the ACE loader where to copy our custom data
+--------------------------------------------------------------------------------
+
+!begin
+
+!src "ucf_data/ace_exploit.mgc"
+!src "ucf_data/datacopy_table.mgc"
+
+# Load our custom data into the addresses expected by the datacopy table
+
+# Internal filename
+!loc 8046180c
+!string "UCFSettings"
+# pad to 0x18 length
+00 00 00 00 00 00 00 00 00 00 00 00 00
+
+# Displayed filename
+!loc 80461824
+!string "UCF Datafile"
+
+# Default Tournament Settings
+!loc 80461830
+00 34 01 02 04 00 0a 00 08 01 01 00
+
+# Gecko codehandler
+!loc 80460c64
+!file "ucf_data/codehandler.bin"
+
+# v1.02 Gecko codeset
+!loc 80465000
+!src "ucf_data/codeset_v102.mgc"
+
+# v1.01 Gecko codeset
+!loc 8045e6e0
+!src "ucf_data/codeset_v101.mgc"
+
+# v1.00 Gecko codeset
+!loc 80468c64
+!src "ucf_data/codeset_v100.mgc"

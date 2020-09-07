@@ -1,0 +1,123 @@
+DATACOPY TABLE
+
+During the ACE exploit loader, the datacopy table is used to copy our custom
+data from the save data memory region to other places in memory. This is because
+Melee wants to write things to the save data region such as nametags and match
+data. So, the first thing we need to do after triggering ACE is to get all of
+our custom data out of there and into safe memory regions that Melee won't
+touch.
+
+Each version of Melee needs its own datacopy table because the save file is
+loaded into different memory regions in each version. For example, address
+80460000 in v1.02 is loaded to 8045f320 in v1.01 and 8045e038 in v1.00.
+
+Another reason to use a different datacopy table per Melee version is that you
+probably want to copy different data for each version. For example, a Gecko
+codeset usually needs to be version-specific.
+
+Format:
+80465000 <-- The current location of our data
+817f4000 <-- The location we want to move the data to
+00003700 <-- The length of the data to copy
+--------------------------------------------------------------------------------
+
+!begin
+
+# --------------------
+# v1.02 datacopy table
+# --------------------
+!loc 80460a64
+
+# Internal filename
+8046180c
+803bac5c
+00000018
+
+# Displayed filename
+80461824
+803bac3c
+0000000c
+
+# Gecko codehandler
+80460c64
+801910e0
+00000ba8
+
+# Gecko codeset
+80465000
+817f4000
+00003700
+
+# Default tournament settings
+80461830
+8045bf10
+0000000c
+
+# End table
+00000000
+
+# --------------------
+# v1.01 datacopy table
+# --------------------
+!loc 80460864
+
+# Internal filename
+80460b2c
+803b9f7c
+00000018
+
+# Displayed filename
+80460b44
+803b9f3c
+0000000c
+
+# Gecko codehandler
+8045ff84
+80190a94
+00000ba8
+
+# Gecko codeset
+8045da00
+817f4000
+000010d8
+
+# Default tournament settings
+80460b50
+8045b230
+0000000c
+
+# End table
+00000000
+
+# --------------------
+# v1.00 datacopy table
+# --------------------
+!loc 80460664
+
+# Internal filename
+8045f844
+803b8d9c
+00000018
+
+# Displayed filename
+8045f85c
+803b8d7c
+0000000c
+
+# Gecko codehandler
+8045ec9c
+801901e0
+00000ba8
+
+# Gecko codeset
+80466c9c
+817f4000
+000010d8
+
+# Default tournament settings
+8045f868
+80459f48
+0000000c
+
+# End table
+00000000
