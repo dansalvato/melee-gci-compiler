@@ -29,11 +29,16 @@ geckocodelist_files = {}
 # A list of the current MGC file stack if there are nested source files
 mgc_stack = []
 
+# A list of (address, length) tuples used to see if writing to the same address
+# more than once
+write_history = []
+
 # The directory of the root MGC file
 root_directory = ""
 
 def compile(root_mgc_path, silent=False, noclean=False, debug=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
+    global write_history
     logger.silent_log = silent
     logger.debug_log = debug
     if not noclean:
@@ -44,6 +49,7 @@ def compile(root_mgc_path, silent=False, noclean=False, debug=False):
         compile(Path(__file__).parent/"init_gci"/"init_gci.mgc", silent=True, noclean=True)
     logger.silent_log = silent
     logger.debug_log = debug
+    write_history = []
     # Set root directory
     root_mgc_path = Path(root_mgc_path).absolute()
     root_directory = root_mgc_path.parent
@@ -73,8 +79,13 @@ def _load_mgc_file(filepath):
     log('INFO', f"Loading MGC file {filepath.name}")
     filedata = []
     parent = filepath.parent
-    with filepath.open('r') as f:
-        filedata = f.readlines()
+    try:
+        with filepath.open('r') as f:
+            filedata = f.readlines()
+    except FileNotFoundError:
+        raise CompileError(f"File not found: {str(filepath)}")
+    except UnicodeDecodeError:
+        raise CompileError("Unable to read MGC file; make sure it's a text file")
     # Store file data
     mgc_files[filepath] = MGCFile(filepath, filedata)
     # See if the new file sources any additional files we need to load
@@ -97,8 +108,13 @@ def _load_geckocodelist_file(filepath):
        geckocodelist_files"""
     if filepath in geckocodelist_files: return
     log('INFO', f"Loading Gecko codelist file {filepath.name}")
-    with filepath.open('r') as f:
-        filedata = f.readlines()
+    try:
+        with filepath.open('r') as f:
+            filedata = f.readlines()
+    except FileNotFoundError:
+        raise CompileError(f"File not found: {str(filepath)}")
+    except UnicodeDecodeError:
+        raise CompileError("Unable to read Gecko codelist file; make sure it's a text file")
     geckocodelist_files[filepath] = GeckoCodelistFile(filepath, filedata)
     return
 
@@ -106,8 +122,11 @@ def _load_bin_file(filepath):
     """Loads a binary file from disk and stores its data in bin_files"""
     if filepath in bin_files: return
     log('INFO', f"Loading binary file {filepath.name}")
-    with filepath.open('rb') as f:
-        filedata = f.read()
+    try:
+        with filepath.open('rb') as f:
+            filedata = f.read()
+    except FileNotFoundError:
+        raise CompileError(f"File not found: {str(filepath)}")
     bin_files[filepath] = BINFile(filepath, filedata)
 
 def _load_all_mgc_files(root_filepath):
@@ -121,7 +140,7 @@ def _load_all_mgc_files(root_filepath):
 
 def _write_data(data, mgc_file, line_number):
     """Writes a byte array to the GCI"""
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode, write_history
     if gci_pointer_mode:
         log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
         if gci_pointer + len(data) > len(gci_data):
@@ -136,12 +155,29 @@ def _write_data(data, mgc_file, line_number):
             raise CompileError(e, mgc_file, line_number)
         loc_pointer += len(data)
     data_pointer = 0
+    _check_write_history(write_table, mgc_file, line_number)
     for entry in write_table:
         gci_pointer, data_length = entry
         log('DEBUG', f"        0x{data_length:x} bytes to 0x{gci_pointer:x}", mgc_file, line_number)
         gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_pointer+data_length]
         data_pointer += data_length
+    write_history.append((write_table, mgc_file, line_number))
     return
+
+def _check_write_history(write_table, mgc_file, line_number):
+    global write_history
+    for entry in write_table:
+        gci_pointer, data_length = entry
+        for history_entry in write_history:
+            history_write_table = history_entry[0]
+            history_mgc_file = history_entry[1]
+            history_line_number = history_entry[2]
+            for history_write_table_entry in history_write_table:
+                history_pointer, history_length = history_write_table_entry
+                if (history_pointer <= gci_pointer and history_pointer + history_length > gci_pointer) or \
+                   (gci_pointer <= history_pointer and gci_pointer + data_length > history_pointer):
+                    log('WARNING', f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_mgc_file.filepath.name} (Line {history_line_number+1}) and is being overwritten", mgc_file, line_number)
+                    return
 
 def _process_bin(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
