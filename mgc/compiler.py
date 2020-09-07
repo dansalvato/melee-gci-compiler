@@ -57,14 +57,18 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
             raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     if not noclean:
         # Compile init_gci.mgc which writes the data found in a clean save file
-        # TODO: Zero out all block data before this step
         log('INFO', "Initializing GCI")
+        # Zero out all block data
         for i in range(10):
             data_pointer = GCI_START_OFFSET + (i * 0x2000)
             gci_data[data_pointer:data_pointer+0x1f2c] = bytearray(0x1f2c)
+        # Silently load and compile init_gci.mgc which loads all default Melee
+        # save data
         init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
+        logger.silent_log = True
         _load_all_mgc_files(init_gci_path)
         _compile_file(mgc_files[init_gci_path])
+        logger.silent_log = silent
     write_history = []
     # Set root directory
     root_mgc_path = Path(root_mgc_path).absolute()
@@ -117,6 +121,8 @@ def _load_mgc_file(filepath):
             if operation.codetype != 'COMMAND': continue
             if operation.data.name == 'src':
                 additional_files.append(parent.joinpath(operation.data.args[0]))
+            elif operation.data.name == 'asmsrc':
+                _load_asm_file(parent.joinpath(operation.data.args[0]))
             elif operation.data.name == 'geckocodelist':
                 _load_geckocodelist_file(parent.joinpath(operation.data.args[0]))
             elif operation.data.name == 'file':
@@ -148,6 +154,18 @@ def _load_bin_file(filepath):
     except FileNotFoundError:
         raise CompileError(f"File not found: {str(filepath)}")
     bin_files[filepath] = BINFile(filepath, filedata)
+
+def _load_asm_file(filepath):
+    """Loads an ASM code file from disk and stores its data in bin_files
+       (it gets compiled to binary as we load it from disk)"""
+    if filepath in bin_files: return
+    log('INFO', f"Loading ASM source file {filepath.name}")
+    try:
+        with filepath.open('r') as f:
+            filedata = f.read()
+    except FileNotFoundError:
+        raise CompileError(f"File not found: {str(filepath)}")
+    bin_files[filepath] = ASMFile(filepath, filedata)
 
 def _load_all_mgc_files(root_filepath):
     """Loads all required MGC files from disk, starting with the root file"""

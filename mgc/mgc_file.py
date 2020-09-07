@@ -8,13 +8,36 @@ from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 
-class BINFile:
-    """A file containing binary data"""
+class File:
     def __init__(self, filepath, filedata):
         self.filepath = filepath
         self.filedata = filedata
 
-class GeckoCodelistFile:
+    def __compile_asm_block(self, asm, c2=False, c2_ba=None):
+        """Takes an ASM text string and compiles it to hex using pyiiasmh"""
+        # TODO: Better exception handling
+        root_directory = self.filepath.parent
+        txtfile = root_directory.joinpath('code.txt')
+        with open(txtfile, 'w') as f:
+            f.write(asm)
+        compiled_asm = ppctools.asm_opcodes(root_directory)
+        if c2:
+            c2_ba = "%08x" % c2_ba
+            compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
+        return compiled_asm
+
+
+class BINFile(File):
+    """A file containing binary data"""
+    pass
+
+class ASMFile(File):
+    """An ASM code file converted to binary data"""
+    def __init__(self, filepath, filedata):
+        self.filepath = filepath
+        self.filedata = __compile_asm_block(filedata)
+
+class GeckoCodelistFile(File):
     """A Gecko codelist file converted to binary data"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
@@ -34,7 +57,7 @@ class GeckoCodelistFile:
 
         return header + data
 
-class MGCFile:
+class MGCFile(File):
     """An MGC script file"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
@@ -135,17 +158,3 @@ class MGCFile:
                         asm_buffer += asm_line + '\n'
                         filedata[line_number+asm_line_number+1] = ''
         return filedata, asm_blocks
-
-    def __compile_asm_block(self, asm, c2=False, c2_ba=None):
-        """Takes an ASM text string and compiles it to hex using pyiiasmh"""
-        # TODO: Better exception handling
-        root_directory = self.filepath.parent
-        txtfile = root_directory.joinpath('code.txt')
-        with open(txtfile, 'w') as f:
-            f.write(asm)
-        compiled_asm = ppctools.asm_opcodes(root_directory)
-        if c2:
-            c2_ba = "%08x" % c2_ba
-            compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
-
-        return compiled_asm

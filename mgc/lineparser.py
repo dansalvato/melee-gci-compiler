@@ -15,6 +15,7 @@ COMMANDS = {
     'gci': [int],
     'add': [int],
     'src': [str],
+    'asmsrc': [str],
     'file': [str],
     'geckocodelist': [str],
     'string': [str],
