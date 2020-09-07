@@ -3,8 +3,9 @@
 import os
 import struct
 
-from gci_encode import decode_byte as unpack
-from gci_encode import encode_byte as pack
+from .gci_encode import decode_byte as unpack
+from .gci_encode import encode_byte as pack
+from ..logger import log
 
 class melee_gci(object):
     """ Base class for GCI files. Just basic setter/getter stuff for dentry
@@ -18,7 +19,7 @@ class melee_gci(object):
             self.filesize = os.stat(filename).st_size
             self.raw_bytes = bytearray(self.fd.read(self.filesize))
             self.fd.seek(0x0)
-            print("Read {} bytes from input GCI".format(hex(self.filesize)))
+            log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
         except FileNotFoundError as e:
             err(e)
             self.fd = None
@@ -127,8 +128,8 @@ class melee_gamedata(melee_gci):
             target_offset = base_offset + (blknum * 0x2000)
             self.raw_bytes[target_offset:target_offset + 0x10] = new_checksum
         else:
-            print("[!] Can't set checksum bytes for block {}".format(blknum))
-            exit(-1)
+            raise Exception("Can't set checksum bytes for block {}".format(blknum))
+            
 
     def checksum_block(self, blknum):
         """ Given some block number 0-10, compute the checksum for the
@@ -139,14 +140,14 @@ class melee_gamedata(melee_gci):
             target_offset = base_offset + (blknum * 0x2000)
             return self._checksum(target_offset, data_size)
         else:
-            print("[!] Can't compute checksum bytes for block {}".format(blknum))
-            exit(-1)
+            raise Exception("Can't compute checksum bytes for block {}".format(blknum))
+            
 
     def recompute_checksums(self):
         """ Recompute all checksum values and write them back """
         if (self.packed is True):
-            print("[!] You can only recompute checksums on unpacked data")
-            exit(-1)
+            raise Exception("You can only recompute checksums on unpacked data")
+            
 
         # Retrieve checksum values for all blocks
         current = []
@@ -161,10 +162,10 @@ class melee_gamedata(melee_gci):
         # If current checksums don't match, write them back
         for i in range(0, self.blocksize()-1):
             if (current[i] != computed[i]):
-                print("[*] Block {} checksum mismatch, fixing ..".format(i))
+                log('DEBUG', "Block {} checksum mismatch, fixing ..".format(i))
                 self.set_raw_checksum(i, computed[i])
             else:
-                print("[*] Block {} checksum unchanged".format(i))
+                log('DEBUG', "Block {} checksum unchanged".format(i))
 
     def get_block(self, blknum):
         ''' Get the data portion of some block '''
@@ -183,9 +184,9 @@ class melee_gamedata(melee_gci):
     def unpack(self):
         """ Unpack all blocks of data """
         if (self.packed is False):
-            print("[!] Data is already unpacked - refusing to unpack")
-            exit(-1)
-        print("[*] Unpacking GCI data")
+            raise Exception("Data is already unpacked - refusing to unpack")
+            
+        log('DEBUG', "Unpacking GCI data")
 
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
@@ -205,9 +206,9 @@ class melee_gamedata(melee_gci):
     def pack(self):
         """ Pack all blocks of data """
         if (self.packed is True):
-            print("[!] Data is already packed -- refusing to pack")
-            exit(-1)
-        print("[*] Packing GCI data")
+            raise Exception("Data is already packed -- refusing to pack")
+            
+        log('DEBUG', "Packing GCI data")
 
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
@@ -252,8 +253,8 @@ class melee_snapshot(melee_gci):
             target_offset = base_offset + (blknum * 0x2000)
             self.raw_bytes[target_offset:target_offset + 0x10] = new_checksum
         else:
-            print("[!] Can't set checksum bytes for block {}".format(blknum))
-            exit(-1)
+            raise Exception("Can't set checksum bytes for block {}".format(blknum))
+            
 
     def checksum_region_0(self):
         """ Compute the header checksum """
@@ -274,20 +275,20 @@ class melee_snapshot(melee_gci):
             target_offset = base_offset + (blknum * 0x2000)
             return self._checksum(target_offset, data_size)
         else:
-            print("[!] Can't compute checksum bytes for block {}".format(blknum))
-            exit(-1)
+            raise Exception("Can't compute checksum bytes for block {}".format(blknum))
+            
 
     def recompute_checksums(self):
         """ Recompute all checksum values and write them back """
         if (self.packed is True):
-            print("[!] You can only recompute checksums on unpacked data")
-            exit(-1)
+            raise Exception("You can only recompute checksums on unpacked data")
+            
 
         if (self.get_raw_header_checksum() != self.checksum_header()):
-            print("[*] Header checksum mismatch, fixing ..")
+            log('DEBUG', "Header checksum mismatch, fixing ..")
             self.set_raw_header_checksum(self.checksum_header())
         else:
-            print("[*] Header checksum unchanged")
+            log('DEBUG', "Header checksum unchanged")
 
         # Retrieve checksum values for all blocks
         current = []
@@ -302,18 +303,18 @@ class melee_snapshot(melee_gci):
         # If current checksums don't match, write them back
         for i in range(0, self.blocksize()-1):
             if (current[i] != computed[i]):
-                print("[*] Block {} checksum mismatch, fixing ..".format(i))
+                log('DEBUG', "Block {} checksum mismatch, fixing ..".format(i))
                 self.set_raw_checksum(i, computed[i])
             else:
-                print("[*] Block {} checksum unchanged".format(i))
+                log('DEBUG', "Block {} checksum unchanged".format(i))
 
 
     def unpack(self):
         """ Unpack all data """
         if (self.packed is False):
-            print("[!] Data is already unpacked - refusing to unpack")
-            exit(-1)
-        print("[*] Unpacking GCI data")
+            raise Exception("Data is already unpacked - refusing to unpack")
+            
+        log('DEBUG', "Unpacking GCI data")
 
         # Unpack the data header region
         PREV_BYTE_OFFSET = 0x1ebf
@@ -346,9 +347,9 @@ class melee_snapshot(melee_gci):
     def pack(self):
         """ Pack all blocks of data """
         if (self.packed is True):
-            print("[!] Data is already packed -- refusing to pack")
-            exit(-1)
-        print("[*] Packing GCI data")
+            raise Exception("Data is already packed -- refusing to pack")
+            
+        log('DEBUG', "Packing GCI data")
 
         # Pack the data header region
         PREV_BYTE_OFFSET = 0x1ebf

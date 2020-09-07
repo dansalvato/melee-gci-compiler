@@ -6,6 +6,7 @@ import sys, getopt
 from pathlib import Path
 from mgc import compiler
 from mgc.logger import log
+from mgc.errors import CompileError
 
 USAGE_TEXT = """\
 Usage: melee-gci-compiler.py [options] <script_path>
@@ -43,14 +44,19 @@ def main(argv):
         elif opt == '-i': input_gci = arg
         elif opt == '-o': output_gci = arg
         elif opt == '--noclean': noclean = True
-        elif opt == 'silent': silent = True
-        elif opt == 'debug': debug = True
+        elif opt == '--silent': silent = True
+        elif opt == '--debug': debug = True
         else:
             print(USAGE_TEXT)
             sys.exit(2)
 
-
-    compiler.compile(script_path, input_gci=input_gci, noclean=noclean, silent=silent, debug=debug)
+    try:
+        compiler.compile(script_path, input_gci=input_gci, noclean=noclean, silent=silent, debug=debug)
+    except CompileError as e:
+        if debug: pass
+        else:
+            print(e)
+            sys.exit(10)
     if not silent:
         log('INFO', "Compile successful")
         if not output_gci:

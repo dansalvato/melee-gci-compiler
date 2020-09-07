@@ -3,11 +3,9 @@
 
 import os, sys
 import struct
-import binascii
 
-from meleegci import *
-from gci_encode import decode_byte as unpack
-from gci_encode import encode_byte as pack
+from .meleegci import *
+
 print(sys.argv)
 if len(sys.argv) < 4:
     print("Usage: savefile.py [--pack | --unpack] <input GCI> <output GCI>")

@@ -7,6 +7,7 @@ from .errors import *
 from .lineparser import *
 from .mgc_file import MGCFile, GeckoCodelistFile, BINFile
 from .gci_tools.mem2gci import *
+from .gci_tools.meleegci import melee_gamedata
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -38,9 +39,22 @@ root_directory = ""
 
 def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
-    global write_history
+    global write_history, gci_data
     logger.silent_log = silent
     logger.debug_log = debug
+    if input_gci:
+        log('INFO', "Loading and unpacking input GCI")
+        try:
+            input_gci = melee_gamedata(input_gci, packed=True)
+        except FileNotFoundError:
+            raise CompileError(f"Input GCI not found: {input_gci}")
+        try:
+            input_gci.unpack()
+        except Exception as e:
+            raise CompileError(f"GCI decoder: {e}")
+        gci_data = input_gci.raw_bytes
+        if len(gci_data) != 0x16040:
+            raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     if not noclean:
         # Compile init_gci.mgc which writes the data found in a clean save file
         # TODO: Zero out all block data before this step
@@ -57,10 +71,13 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
     _load_all_mgc_files(root_mgc_path)
     # Begin compile
     _compile_file(mgc_files[root_mgc_path])
-    # Temporary write routine for testing
-    with open("temp.gci", 'wb') as f:
-        f.write(gci_data)
-    return
+
+    if input_gci:
+        log('INFO', "Packing GCI")
+        input_gci.raw_bytes = gci_data
+        input_gci.pack()
+        return input_gci.raw_bytes
+    else: return gci_data
 
 def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
     """Compiles the data of a single file; !src makes this function recursive"""
@@ -180,92 +197,76 @@ def _check_write_history(write_table, mgc_file, line_number):
                     return
 
 def _process_bin(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     data_hex = format(int(data, 2), 'x')
     _process_hex(data_hex, mgc_file, line_number)
     return
 def _process_hex(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     data = bytearray.fromhex(data)
     _write_data(data, mgc_file, line_number)
     return
 def _process_command(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     COMMAND_FUNCS[data.name](data.args, mgc_file, line_number)
     return
 def _process_warning(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('WARNING', data, mgc_file, line_number)
     return
 def _process_error(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     raise CompileError(data, mgc_file, line_number)
     return
 
 
 
 def _cmd_process_loc(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode
     gci_pointer_mode = False
     loc_pointer = data[0]
     return
 def _cmd_process_gci(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode
     gci_pointer_mode = True
     gci_pointer = data[0]
     return
 def _cmd_process_add(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode
     if gci_pointer_mode: gci_pointer += data[0]
     else: loc_pointer += data[0]
     return
 def _cmd_process_src(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     file = mgc_file.filepath.parent.joinpath(data[0])
     _compile_file(mgc_files[file], mgc_file, line_number)
     return
 def _cmd_process_file(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     file = mgc_file.filepath.parent.joinpath(data[0])
     _write_data(bin_files[file].filedata, mgc_file, line_number)
     return
 def _cmd_process_geckocodelist(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     file = mgc_file.filepath.parent.joinpath(data[0])
     _write_data(geckocodelist_files[file].filedata, mgc_file, line_number)
     return
 def _cmd_process_string(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     _write_data(bytearray(data[0], encoding='ascii'), mgc_file, line_number)
     return
 def _cmd_process_asm(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     asm_block_num = int(data[0])
     _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
     return
 def _cmd_process_asmend(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('WARNING', "!asmend is used without a !asm preceding it", mgc_file, line_number)
     return
 def _cmd_process_c2(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     asm_block_num = int(data[1])
     _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
     return
 def _cmd_process_c2end(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('WARNING', "!c2end is used without a !c2 preceding it", mgc_file, line_number)
     return
 def _cmd_process_begin(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('WARNING', "!begin is used more than once; ignoring this one", mgc_file, line_number)
     return
 def _cmd_process_end(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('WARNING', "!end is used more than once; ignoring this one", mgc_file, line_number)
     return
 def _cmd_process_echo(data, mgc_file, line_number):
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
     log('INFO', data[0])
     return
 

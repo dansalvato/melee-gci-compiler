@@ -1,7 +1,7 @@
 #!usr/bin/env python
 """gci_encode.py: Encodes and decodes bytes in a Melee GCI file."""
 
-from ppc_opcodes import *
+from .ppc_opcodes import *
 
 CHECKSUM_SEED = bytes([
     0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
