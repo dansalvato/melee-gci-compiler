@@ -8,7 +8,34 @@ from errors import *
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 
+class BINFile:
+    """A file containing binary data"""
+    def __init__(self, filepath, filedata):
+        self.filepath = filepath
+        self.filedata = filedata
+
+class GeckoCodelistFile:
+    """A Gecko codelist file converted to binary data"""
+    def __init__(self, filepath, filedata):
+        self.filepath = filepath
+        self.filedata = self.__preprocess(filedata)
+
+    def __preprocess(self, filedata):
+        header = bytearray.fromhex("00d0c0de00d0c0de")
+        data = bytearray(0)
+        for line_number, line in enumerate(filedata):
+            if line[0] != '*': continue
+            line = line[1:]
+            try:
+                data += bytearray.fromhex(line)
+            except ValueError:
+                raise CompileError("Invalid Gecko code line", self.filepath, line_number)
+
+
+        return header + data
+
 class MGCFile:
+    """An MGC script file"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
         self.filedata = self.__preprocess(filedata)

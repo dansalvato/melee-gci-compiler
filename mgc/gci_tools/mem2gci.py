@@ -28,7 +28,7 @@ MEM_LIST = [            #Melee start address for each GCI block
         0x8045bf28,     #Block 9
         ]
 
-BLOCK_SIZE = [0, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0, 0x17f0]
+BLOCK_SIZE = [0, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0x1f2c, 0, 0x1790]
 BLOCK_START = BLOCK_LIST[0]
 BLOCK_END = BLOCK_LIST[9] + BLOCK_SIZE[9]
 MEM_START = MEM_LIST[9] # Memory starts with block 9 for some reason

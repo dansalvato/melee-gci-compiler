@@ -5,7 +5,7 @@ import logger
 from logger import log
 from errors import *
 from lineparser import *
-from mgc_file import MGCFile
+from mgc_file import MGCFile, GeckoCodelistFile, BINFile
 from gci_tools.mem2gci import *
 
 # The earliest location we can inject data into the GCI
@@ -23,6 +23,8 @@ gci_pointer_mode = False
 # We load all MGC files from disk ahead of time and use this dict to send
 # file data to any MGCFile objects we create.
 mgc_files = {}
+bin_files = {}
+geckocodelist_files = {}
 
 # A list of the current MGC file stack if there are nested source files
 mgc_stack = []
@@ -30,9 +32,10 @@ mgc_stack = []
 # The directory of the root MGC file
 root_directory = ""
 
-def compile(root_mgc_path, silent=False, noclean=False):
+def compile(root_mgc_path, silent=False, noclean=False, debug=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
     logger.silent_log = silent
+    logger.debug_log = debug
     if not noclean:
         # Compile init_gci.mgc which writes the data found in a clean save file
         # TODO: Zero out all block data before this step
@@ -40,6 +43,7 @@ def compile(root_mgc_path, silent=False, noclean=False):
         gci_data[GCI_START_OFFSET:] = bytearray(len(gci_data) - GCI_START_OFFSET)
         compile(Path(__file__).parent/"init_gci"/"init_gci.mgc", silent=True, noclean=True)
     logger.silent_log = silent
+    logger.debug_log = debug
     # Set root directory
     root_mgc_path = Path(root_mgc_path).absolute()
     root_directory = root_mgc_path.parent
@@ -56,7 +60,7 @@ def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
     """Compiles the data of a single file; !src makes this function recursive"""
     log('INFO', f"Compiling {mgc_file.filepath.name}", ref_mgc_file, ref_line_number)
     if mgc_file in mgc_stack:
-        raise CompileError("MGC files are sourcing each other in an infinite loop", mgc_file)
+        raise CompileError("MGC files are sourcing each other in an infinite loop", ref_mgc_file, ref_line_number)
     mgc_stack.append(mgc_file)
     for line in mgc_file.get_lines():
         for op in line.op_list:
@@ -66,7 +70,7 @@ def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
 def _load_mgc_file(filepath):
     """Loads a MGC file from disk and stores its data in mgc_files"""
     if filepath in mgc_files: return [] # Do nothing if the file is already loaded
-    log('INFO', f"Loading {filepath.name}")
+    log('INFO', f"Loading MGC file {filepath.name}")
     filedata = []
     parent = filepath.parent
     with filepath.open('r') as f:
@@ -80,9 +84,31 @@ def _load_mgc_file(filepath):
         op_list = parse_opcodes(line)
         for operation in op_list:
             if operation.codetype != 'COMMAND': continue
-            if operation.data.name != 'src': continue
-            additional_files.append(parent.joinpath(operation.data.args[0]))
+            if operation.data.name == 'src':
+                additional_files.append(parent.joinpath(operation.data.args[0]))
+            elif operation.data.name == 'geckocodelist':
+                _load_geckocodelist_file(parent.joinpath(operation.data.args[0]))
+            elif operation.data.name == 'file':
+                _load_bin_file(parent.joinpath(operation.data.args[0]))
     return additional_files
+
+def _load_geckocodelist_file(filepath):
+    """Loads a Gecko codelist file from disk and stores its data in
+       geckocodelist_files"""
+    if filepath in geckocodelist_files: return
+    log('INFO', f"Loading Gecko codelist file {filepath.name}")
+    with filepath.open('r') as f:
+        filedata = f.readlines()
+    geckocodelist_files[filepath] = GeckoCodelistFile(filepath, filedata)
+    return
+
+def _load_bin_file(filepath):
+    """Loads a binary file from disk and stores its data in bin_files"""
+    if filepath in bin_files: return
+    log('INFO', f"Loading binary file {filepath.name}")
+    with filepath.open('rb') as f:
+        filedata = f.read()
+    bin_files[filepath] = BINFile(filepath, filedata)
 
 def _load_all_mgc_files(root_filepath):
     """Loads all required MGC files from disk, starting with the root file"""
@@ -111,7 +137,7 @@ def _write_data(data, mgc_file, line_number):
     for entry in write_table:
         gci_pointer, data_length = entry
         log('DEBUG', f"        0x{data_length:x} bytes to 0x{gci_pointer:x}", mgc_file, line_number)
-        gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_length]
+        gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_pointer+data_length]
         data_pointer += data_length
 
 
@@ -164,9 +190,13 @@ def _cmd_process_src(data, mgc_file, line_number):
     return
 def _cmd_process_file(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    file = mgc_file.filepath.parent.joinpath(data[0])
+    _write_data(bin_files[file].filedata, mgc_file, line_number)
     return
 def _cmd_process_geckocodelist(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    file = mgc_file.filepath.parent.joinpath(data[0])
+    _write_data(geckocodelist_files[file].filedata, mgc_file, line_number)
     return
 def _cmd_process_string(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
