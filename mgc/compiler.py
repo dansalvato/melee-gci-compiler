@@ -1,12 +1,12 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-import logger
-from logger import log
-from errors import *
-from lineparser import *
-from mgc_file import MGCFile, GeckoCodelistFile, BINFile
-from gci_tools.mem2gci import *
+from . import logger
+from .logger import log
+from .errors import *
+from .lineparser import *
+from .mgc_file import MGCFile, GeckoCodelistFile, BINFile
+from .gci_tools.mem2gci import *
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -36,7 +36,7 @@ write_history = []
 # The directory of the root MGC file
 root_directory = ""
 
-def compile(root_mgc_path, silent=False, noclean=False, debug=False):
+def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
     global write_history
     logger.silent_log = silent

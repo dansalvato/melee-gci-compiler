@@ -33,7 +33,7 @@ import binascii
 import subprocess
 
 from pathlib import Path
-from pyiiasmh.errors import CodetypeError, UnsupportedOSError
+from .errors import CodetypeError, UnsupportedOSError
 
 log = None
 eabi = {}

@@ -35,5 +35,5 @@ def format_log(logtype, message, mgc_file=None, line_number=None):
         if line_number != None:
             line_string = ", Line " + str(line_number + 1)
         file_string = '[' + file_string + line_string + '] '
-    message = f"[{logtype}]   {file_string}{message}"
+    message = f"[{logtype}]{' ' * (9 - len(logtype))}{file_string}{message}"
     return message

@@ -1,4 +1,3 @@
-#!usr/bin/env python
 """ppc_opcodes.py: Python implementations of the PPC opcodes needed for GCI encode/decode functions."""
 
 def mask(mb: int, me: int) -> int:
