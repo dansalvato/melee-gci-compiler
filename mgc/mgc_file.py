@@ -129,6 +129,8 @@ class MGCFile:
                                    # Compile ASM, store to asm_block
                                    c2 = True if operation.data.name == 'c2' else False
                                    asm_blocks.append(self.__compile_asm_block(asm_buffer, c2, operation.data.args[0]))
+                                   # Wipe end tag, no longer needed
+                                   filedata[line_number+asm_line_number+1] = ''
                                    break
                         asm_buffer += asm_line + '\n'
                         filedata[line_number+asm_line_number+1] = ''

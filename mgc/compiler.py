@@ -127,20 +127,20 @@ def _write_data(data, mgc_file, line_number):
         if gci_pointer + len(data) > len(gci_data):
             raise CompileError("Attempting to write past the end of the GCI", mgc_file, line_number)
         write_table = [(gci_pointer, len(data))]
+        gci_pointer += len(data)
     else:
         log('DEBUG', f"Writing 0x{len(data):x} bytes in loc mode:", mgc_file, line_number)
         try:
             write_table = data2gci(loc_pointer, len(data))
         except ValueError as e:
             raise CompileError(e, mgc_file, line_number)
+        loc_pointer += len(data)
     data_pointer = 0
     for entry in write_table:
         gci_pointer, data_length = entry
         log('DEBUG', f"        0x{data_length:x} bytes to 0x{gci_pointer:x}", mgc_file, line_number)
         gci_data[gci_pointer:gci_pointer+data_length] = data[data_pointer:data_pointer+data_length]
         data_pointer += data_length
-
-
     return
 
 def _process_bin(data, mgc_file, line_number):
@@ -200,6 +200,7 @@ def _cmd_process_geckocodelist(data, mgc_file, line_number):
     return
 def _cmd_process_string(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    _write_data(bytearray(data[0], encoding='ascii'), mgc_file, line_number)
     return
 def _cmd_process_asm(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
@@ -208,6 +209,7 @@ def _cmd_process_asm(data, mgc_file, line_number):
     return
 def _cmd_process_asmend(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('WARNING', "!asmend is used without a !asm preceding it", mgc_file, line_number)
     return
 def _cmd_process_c2(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
@@ -216,6 +218,7 @@ def _cmd_process_c2(data, mgc_file, line_number):
     return
 def _cmd_process_c2end(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
+    log('WARNING', "!c2end is used without a !c2 preceding it", mgc_file, line_number)
     return
 def _cmd_process_begin(data, mgc_file, line_number):
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode
