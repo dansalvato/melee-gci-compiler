@@ -13,9 +13,10 @@ class File:
         self.filepath = filepath
         self.filedata = filedata
 
-    def __compile_asm_block(self, asm, c2=False, c2_ba=None):
+    def compile_asm_block(self, asm, c2=False, c2_ba=None):
         """Takes an ASM text string and compiles it to hex using pyiiasmh"""
         # TODO: Better exception handling
+        # TODO: Make sure temp files always write to root MGC path
         root_directory = self.filepath.parent
         txtfile = root_directory.joinpath('code.txt')
         with open(txtfile, 'w') as f:
@@ -35,7 +36,7 @@ class ASMFile(File):
     """An ASM code file converted to binary data"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
-        self.filedata = __compile_asm_block(filedata)
+        self.filedata = bytearray.fromhex(self.compile_asm_block(filedata))
 
 class GeckoCodelistFile(File):
     """A Gecko codelist file converted to binary data"""
@@ -44,7 +45,8 @@ class GeckoCodelistFile(File):
         self.filedata = self.__preprocess(filedata)
 
     def __preprocess(self, filedata):
-        header = bytearray.fromhex("00d0c0de00d0c0de")
+        header = bytearray.fromhex('00d0c0de00d0c0de')
+        footer = bytearray.fromhex('f000000000000000')
         data = bytearray(0)
         for line_number, line in enumerate(filedata):
             if line[0] != '*': continue
@@ -55,7 +57,7 @@ class GeckoCodelistFile(File):
                 raise CompileError("Invalid Gecko code line", self.filepath, line_number)
 
 
-        return header + data
+        return header + data + footer
 
 class MGCFile(File):
     """An MGC script file"""
@@ -150,8 +152,12 @@ class MGCFile(File):
                                 if (operation.data.name == 'asm' and asm_operation.data.name == 'asmend') or \
                                    (operation.data.name == 'c2' and asm_operation.data.name == 'c2end'):
                                    # Compile ASM, store to asm_block
-                                   c2 = True if operation.data.name == 'c2' else False
-                                   asm_blocks.append(self.__compile_asm_block(asm_buffer, c2, operation.data.args[0]))
+                                   c2 = False
+                                   c2_address = None
+                                   if operation.data.name == 'c2':
+                                    c2 = True
+                                    c2_address = operation.data.args[0]
+                                   asm_blocks.append(self.compile_asm_block(asm_buffer, c2, c2_address))
                                    # Wipe end tag, no longer needed
                                    filedata[line_number+asm_line_number+1] = ''
                                    break

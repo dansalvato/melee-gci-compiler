@@ -5,7 +5,7 @@ from . import logger
 from .logger import log
 from .errors import *
 from .lineparser import *
-from .mgc_file import MGCFile, GeckoCodelistFile, BINFile
+from .mgc_file import *
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
 
@@ -256,6 +256,9 @@ def _cmd_process_src(data, mgc_file, line_number):
     file = mgc_file.filepath.parent.joinpath(data[0])
     _compile_file(mgc_files[file], mgc_file, line_number)
     return
+def _cmd_process_asmsrc(data, mgc_file, line_number):
+    _cmd_process_file(data, mgc_file, line_number)
+    return
 def _cmd_process_file(data, mgc_file, line_number):
     file = mgc_file.filepath.parent.joinpath(data[0])
     _write_data(bin_files[file].filedata, mgc_file, line_number)
@@ -306,6 +309,7 @@ COMMAND_FUNCS = {
     'gci': _cmd_process_gci,
     'add': _cmd_process_add,
     'src': _cmd_process_src,
+    'asmsrc': _cmd_process_asmsrc,
     'file': _cmd_process_file,
     'geckocodelist': _cmd_process_geckocodelist,
     'string': _cmd_process_string,
