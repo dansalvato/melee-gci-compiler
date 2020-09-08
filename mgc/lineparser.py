@@ -27,7 +27,7 @@ COMMANDS = {
     'begin': [],
     'end': [],
     'echo': [str],
-    'macro': None,
+    'macro': [None],
     'macroend': [],
     }
 
@@ -89,9 +89,6 @@ def parse_opcodes(script_line):
         else:
             command_args = script_line.split(' ')
             command_name = command_args.pop(0)[1:]
-            # Correct args for single-line !macro by un-splitting spaces
-            if command_name == 'macro' and len(command_args) > 1:
-                command_args = [command_args[0], ' '.join(command_args[1:])]
             # If command contains quotes, we ignore command_args
             # TODO: Enforce correct number of args even if command has quotes
             command_quotes = script_line.split('"')[1::2]
@@ -148,6 +145,10 @@ def _parse_command(command):
                     typed_args.append(typed_arg)
                 except ValueError:
                     return [Operation('ERROR', f"Command argument {index+1} must be a hex value")]
+            elif expected_type == None:
+                typed_args.append(arg)
+            else:
+                raise ValueError("Unsupported command argument type")
     else:
         typed_args = untyped_args
 
