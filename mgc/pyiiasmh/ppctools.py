@@ -48,6 +48,7 @@ def setup():
 
     here = Path(__file__).parent
     # Pathnames for powerpc-eabi executables
+    # TODO: Refactor this to use pathlib
     for i in ("as", "ld", "objcopy"):
         eabi[i] = str(here/"lib"/sys.platform)
 
@@ -113,7 +114,8 @@ def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     subprocess.Popen([eabi["objcopy"], "-O", "binary", 
         str(src2file), binfile], stderr=subprocess.PIPE).communicate()
     #time.sleep(.25)
-        
+    
+    # TODO: Pass these exceptions back to the compiler, don't handle here
     rawhex = ""
     try:
         f = open(binfile, "rb")
@@ -135,77 +137,6 @@ def asm_opcodes(tmpdir, txtfile=None, binfile=None):
             f.close() 
     finally:
         return rawhex
-
-def dsm_geckocodes(tmpdir, txtfile, binfile):
-    if sys.platform not in ("linux2", "darwin", "win32"):
-        raise UnsupportedOSError("'" + sys.platform + "' os is not supported")
-    if not os.path.isfile(vdappc):
-        raise IOError(vdappc + " not found")
-
-    if binfile is None:
-        binfile = tmpdir + "code.bin"
-
-    output = subprocess.Popen([vdappc, binfile, "0"], stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE).communicate()
-
-    if output[1]:
-        raise RuntimeError(output[1])
-
-    opcodes = format_opcodes(output[0])
-
-    if txtfile is not None:
-        try:
-            f = open(txtfile, "w")
-        except IOError:
-            log.exception("Failed to open '" + txtfile + "'")
-        else:
-            try:
-                f.write(opcodes + "\n")
-            except IOError:
-                log.exception("Failed to write to '" + txtfile + "'")
-            finally:
-                f.close()
-
-    return opcodes
-
-def format_rawhex(rawhex):
-    #Format raw hex into readable Gecko/WiiRd codes
-    code = []
-    
-    for i in range(0, len(rawhex), 8):
-        code.append(rawhex[i:(i+8)])
-
-    for i in range(1, len(code), 2):
-        code[i] += "\n"
-    for i in range(0, len(code), 2):
-        code[i] += " "
-        
-    return "".join(code)
-
-def format_opcodes(output):
-    # Format the output from vdappc
-    a = []
-    b = []
-    c = []
-    for i in range(len(output.split("\n")) - 1):
-        a.append((output.split("\n"))[i].split("\t", 1)[1])
-        b.append((output.split("\n"))[i])
-    
-    # Branch instruction fixes
-    for i in range(len(b)):
-        if ("0x" in b[i]) == True:
-            c.append(b[i])
-    for i in range(len(c)):        
-        c[i] = c[i][15:].split("\t", 1)[0]
-    for i in range(len(a)):
-        if i == 0:
-            j = 0
-        if ("0x" in a[i]) == True:
-            a[i] = a[i].split("0x")[0]+"0x"+c[j]
-            j = j + 1
-    
-    # Return the disassembled opcodes       
-    return " ".join("\n".join(a).split("\t"))
 
 def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
     if ctype is None:
@@ -248,31 +179,5 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
                raise CodetypeError("Number of lines (" + 
                        numlines + ") must be lower than 0xFF")
 
-def deconstruct_code(codes):
-    codetypes = ("C0", "C2", "C3", "D2", "D3", "F2", "F3", "F4", "F5")
-    if codes[:2] not in codetypes:
-        return (codes, None, None, None, None)
-
-    bapo = None
-    xor = None
-    chksum = None
-    codetype = "C0"
-
-    if codes[:2] != "C0":
-        codetype = "C2D2"
-        bapo = {"C":"8", "D":"0", "F":"8"}.get(codes[0], "8")
-        if codes[1] in ("4", "5"):
-            bapo = "0"
-        bapo += str(int(codes[1]) % 2) + codes[2:8]
-
-        if codes[0] == "F":
-            codetype = "F2F4"
-            chksum = codes[9:11]
-            xor = codes[11:15]
-
-    if codes[-17:-9] == "60000000" or codes[-17:] == "4E800020 00000000":
-        return (codes[18:-17], bapo, xor, chksum, codetype)
-    else:
-        return (codes[18:-9], bapo, xor, chksum, codetype)
 
 setup()
