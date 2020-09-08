@@ -77,10 +77,10 @@ def setup():
         vdappc += ".exe"
 
     log = logging.getLogger("PyiiASMH")
-    hdlr = logging.FileHandler("error.log")
+    #hdlr = logging.FileHandler("error.log")
     formatter = logging.Formatter("\n%(levelname)s (%(asctime)s): %(message)s")
-    hdlr.setFormatter(formatter)
-    log.addHandler(hdlr)
+    #hdlr.setFormatter(formatter)
+    #log.addHandler(hdlr)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     if sys.platform not in ("darwin", "linux2", "win32"):
