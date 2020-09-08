@@ -152,7 +152,7 @@ class MGCFile(File):
                 if operation.codetype != 'COMMAND': continue
                 if operation.data.name == 'asm' or operation.data.name == 'c2':
                     # Send ASM to buffer until asmend/c2end command is reached
-                    # TODO: Handle exception for missing asmend/c2end
+                    asm_ended = False
                     asm_buffer = ''
                     for asm_line_number, asm_line in enumerate(filedata[line_number+1:]):
                         asm_op_list = parse_opcodes(asm_line)
@@ -171,9 +171,11 @@ class MGCFile(File):
                                    asm_blocks.append(self.compile_asm_block(asm_buffer, c2, c2_address))
                                    # Wipe end tag, no longer needed
                                    filedata[line_number+asm_line_number+1] = ''
+                                   asm_ended = True
                                    break
                         asm_buffer += asm_line + '\n'
                         filedata[line_number+asm_line_number+1] = ''
+                    if not asm_ended: raise CompileError(f"!{operation.data.name} Command does not have an end specified", self, line_number)
         return filedata, asm_blocks
 
     def __preprocess_macros(self, filedata):
@@ -186,6 +188,7 @@ class MGCFile(File):
                 macro_name = operation.data.args[0]
                 if macro_name in macros:
                     log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", self, line_number)
+                macro_ended = False
                 macro_op_list = []
                 for macro_line_number, macro_line in enumerate(filedata[line_number+1:]):
                     current_op_list = parse_opcodes(macro_line)
@@ -196,9 +199,11 @@ class MGCFile(File):
                             if macro_operation.data.name == 'macroend':
                                 # Wipe !macroend tag
                                filedata[line_number+macro_line_number+1] = ''
+                               macro_ended = True
                                break
                     macro_op_list += current_op_list
                     filedata[line_number+macro_line_number+1] = ''
+                if not macro_ended: raise CompileError("Macro does not have an end specified", self, line_number)
                 for macro_operation in macro_op_list:
                     if macro_operation.codetype == 'MACRO':
                         raise CompileError("Macros cannot contain other macros", self, line_number)
