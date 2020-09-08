@@ -39,7 +39,10 @@ class File:
             raise CompileError(f"Error compiling ASM: {e}", self, line_number)
         if c2:
             c2_ba = "%08x" % c2_ba
-            compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
+            try:
+                compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
+            except Exception as e:
+                raise CompileError(f"Error compiling ASM: {e}", self, line_number)
         return compiled_asm
 
 
