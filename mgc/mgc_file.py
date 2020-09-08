@@ -19,13 +19,22 @@ class File:
         self.filepath = filepath
         self.filedata = filedata
 
-    def compile_asm_block(self, asm, c2=False, c2_ba=None):
+    def compile_asm_block(self, asm, line_number=None, c2=False, c2_ba=None):
         """Takes an ASM text string and compiles it to hex using pyiiasmh"""
-        # TODO: Better exception handling
         txtfile = tmp_directory/"code.txt"
         with open(txtfile, 'w') as f:
             f.write(asm)
-        compiled_asm = ppctools.asm_opcodes(tmp_directory)
+        try:
+            compiled_asm = ppctools.asm_opcodes(tmp_directory)
+        except RuntimeError as e:
+            if not line_number: line_number = -1
+            r = re.search(r'code\.txt\:(\d+)\: Error: (.*?)\\', str(e))
+            if r:
+                asm_line_number = int(r.group(1))
+                error = r.group(2)
+                raise CompileError(f"ASM error: {error}", self, line_number+asm_line_number)
+            else:
+                raise CompileError(f"Error compiling ASM", self, line_number)
         if c2:
             c2_ba = "%08x" % c2_ba
             compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
@@ -168,7 +177,7 @@ class MGCFile(File):
                                    if operation.data.name == 'c2':
                                     c2 = True
                                     c2_address = operation.data.args[0]
-                                   asm_blocks.append(self.compile_asm_block(asm_buffer, c2, c2_address))
+                                   asm_blocks.append(self.compile_asm_block(asm_buffer, line_number, c2, c2_address))
                                    # Wipe end tag, no longer needed
                                    filedata[line_number+asm_line_number+1] = ''
                                    asm_ended = True
