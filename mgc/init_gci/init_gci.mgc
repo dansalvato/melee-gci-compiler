@@ -1,3 +1,45 @@
+!macro nametag_block
+	!add 1a0		#4200
+	00 01 05 00
+	!add 1a0		#43a4
+	00 01 05 00
+	!add 1a0		#4548
+	00 01 05 00
+	!add 1a0		#46ec
+	00 01 05 00
+	!add 1a0		#4890
+	00 01 05 00
+	!add 1a0		#4a34
+	00 01 05 00
+	!add 1a0		#4bd8
+	00 01 05 00
+	!add 1a0		#4d7c
+	00 01 05 00
+	!add 1a0		#4f20
+	00 01 05 00
+	!add 1a0		#50c4
+	00 01 05 00
+	!add 1a0		#5268
+	00 01 05 00
+	!add 1a0		#540c
+	00 01 05 00
+	!add 1a0		#55b0
+	00 01 05 00
+	!add 1a0		#5754
+	00 01 05 00
+	!add 1a0		#58f8
+	00 01 05 00
+	!add 1a0		#5a9c
+	00 01 05 00
+	!add 1a0		#5c40
+	00 01 05 00
+	!add 1a0		#5de4
+	00 01 05 00
+	!add 1a0		#5f88
+	00 01 05 00
+	!add d4
+!macroend
+
 # Block 0: 0x02060
 
 # This block is an exact copy of block 9 and isn't even read into memory
@@ -27,37 +69,37 @@ ff ff ff ff 00 00 00 00 00 01 00 04 00 00 00 00
 # Block 1: 0x04060
 
 !gci 4060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 2: 0x06060
 
 !gci 6060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 3: 0x08060
 
 !gci 8060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 4: 0x0a060
 
 !gci a060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 5: 0x0c060
 
 !gci c060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 6: 0x0e060
 
 !gci e060
-!src "nametag_block.mgc"
++nametag_block
 
 # Block 7: 0x10060
 
 !gci 10060
-!src "nametag_block.mgc"
++nametag_block
 !gci 11fa0
 26 DD 5A 8D 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 9C 00 00 00 00 00 00 00 00 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00 C8 00 00 00 00 00 00 00 00 00 00 00 5C 00 00 00 00 00 00 00 00 00 00 00 9C 00 00 00 00 00 00 00 00 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00 C8 00 00 00 00 00 00 00 00 00 00 00 5C 00 00 00 00 00 00 00 00 00 00 00 9C 00 00 00 00 00 00 00 00 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00 C8 00 00 00 00 00 00 00 00 00 00 00 5C 00 00 00 00 00 00 00 00
 

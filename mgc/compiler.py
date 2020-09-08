@@ -217,80 +217,91 @@ def _check_write_history(write_table, mgc_file, line_number):
                     log('WARNING', f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_mgc_file.filepath.name} (Line {history_line_number+1}) and is being overwritten", mgc_file, line_number)
                     return
 
-def _process_bin(data, mgc_file, line_number):
+def _process_bin(data, mgcfile, line_number):
     data_hex = format(int(data, 2), 'x')
-    _process_hex(data_hex, mgc_file, line_number)
+    _process_hex(data_hex, mgcfile, line_number)
     return
-def _process_hex(data, mgc_file, line_number):
+def _process_hex(data, mgcfile, line_number):
     data = bytearray.fromhex(data)
-    _write_data(data, mgc_file, line_number)
+    _write_data(data, mgcfile, line_number)
     return
-def _process_command(data, mgc_file, line_number):
-    COMMAND_FUNCS[data.name](data.args, mgc_file, line_number)
+def _process_command(data, mgcfile, line_number):
+    COMMAND_FUNCS[data.name](data.args, mgcfile, line_number)
     return
-def _process_warning(data, mgc_file, line_number):
-    log('WARNING', data, mgc_file, line_number)
+def _process_warning(data, mgcfile, line_number):
+    log('WARNING', data, mgcfile, line_number)
     return
-def _process_error(data, mgc_file, line_number):
-    raise CompileError(data, mgc_file, line_number)
+def _process_error(data, mgcfile, line_number):
+    raise CompileError(data, mgcfile, line_number)
     return
+def _process_macro(data, mgcfile, line_number):
+    macro_name = data
+    if not macro_name in mgc_file.macros:
+        raise CompileError(f"Undefined macro: {macro_name}, mgcfile, line_number")
+    op_list = mgc_file.macros[macro_name]
+    for op in op_list:
+        OPCODE_FUNCS[op.codetype](op.data, mgcfile, line_number)
 
 
-
-def _cmd_process_loc(data, mgc_file, line_number):
+def _cmd_process_loc(data, mgcfile, line_number):
     global loc_pointer, gci_pointer, gci_pointer_mode
     gci_pointer_mode = False
     loc_pointer = data[0]
     return
-def _cmd_process_gci(data, mgc_file, line_number):
+def _cmd_process_gci(data, mgcfile, line_number):
     global loc_pointer, gci_pointer, gci_pointer_mode
     gci_pointer_mode = True
     gci_pointer = data[0]
     return
-def _cmd_process_add(data, mgc_file, line_number):
+def _cmd_process_add(data, mgcfile, line_number):
     global loc_pointer, gci_pointer, gci_pointer_mode
     if gci_pointer_mode: gci_pointer += data[0]
     else: loc_pointer += data[0]
     return
-def _cmd_process_src(data, mgc_file, line_number):
-    file = mgc_file.filepath.parent.joinpath(data[0])
-    _compile_file(mgc_files[file], mgc_file, line_number)
+def _cmd_process_src(data, mgcfile, line_number):
+    file = mgcfile.filepath.parent.joinpath(data[0])
+    _compile_file(mgc_files[file], mgcfile, line_number)
     return
-def _cmd_process_asmsrc(data, mgc_file, line_number):
-    _cmd_process_file(data, mgc_file, line_number)
+def _cmd_process_asmsrc(data, mgcfile, line_number):
+    _cmd_process_file(data, mgcfile, line_number)
     return
-def _cmd_process_file(data, mgc_file, line_number):
-    file = mgc_file.filepath.parent.joinpath(data[0])
-    _write_data(bin_files[file].filedata, mgc_file, line_number)
+def _cmd_process_file(data, mgcfile, line_number):
+    file = mgcfile.filepath.parent.joinpath(data[0])
+    _write_data(bin_files[file].filedata, mgcfile, line_number)
     return
-def _cmd_process_geckocodelist(data, mgc_file, line_number):
-    file = mgc_file.filepath.parent.joinpath(data[0])
-    _write_data(geckocodelist_files[file].filedata, mgc_file, line_number)
+def _cmd_process_geckocodelist(data, mgcfile, line_number):
+    file = mgcfile.filepath.parent.joinpath(data[0])
+    _write_data(geckocodelist_files[file].filedata, mgcfile, line_number)
     return
-def _cmd_process_string(data, mgc_file, line_number):
-    _write_data(bytearray(data[0], encoding='ascii'), mgc_file, line_number)
+def _cmd_process_string(data, mgcfile, line_number):
+    _write_data(bytearray(data[0], encoding='ascii'), mgcfile, line_number)
     return
-def _cmd_process_asm(data, mgc_file, line_number):
+def _cmd_process_asm(data, mgcfile, line_number):
     asm_block_num = int(data[0])
-    _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
+    _process_hex(mgcfile.asm_blocks[asm_block_num], mgcfile, line_number)
     return
-def _cmd_process_asmend(data, mgc_file, line_number):
-    log('WARNING', "!asmend is used without a !asm preceding it", mgc_file, line_number)
+def _cmd_process_asmend(data, mgcfile, line_number):
+    log('WARNING', "!asmend is used without a !asm preceding it", mgcfile, line_number)
     return
-def _cmd_process_c2(data, mgc_file, line_number):
+def _cmd_process_c2(data, mgcfile, line_number):
     asm_block_num = int(data[1])
-    _process_hex(mgc_file.asm_blocks[asm_block_num], mgc_file, line_number)
+    _process_hex(mgcfile.asm_blocks[asm_block_num], mgcfile, line_number)
     return
-def _cmd_process_c2end(data, mgc_file, line_number):
-    log('WARNING', "!c2end is used without a !c2 preceding it", mgc_file, line_number)
+def _cmd_process_c2end(data, mgcfile, line_number):
+    log('WARNING', "!c2end is used without a !c2 preceding it", mgcfile, line_number)
     return
-def _cmd_process_begin(data, mgc_file, line_number):
-    log('WARNING', "!begin is used more than once; ignoring this one", mgc_file, line_number)
+def _cmd_process_macro(data, mgcfile, line_number):
     return
-def _cmd_process_end(data, mgc_file, line_number):
-    log('WARNING', "!end is used more than once; ignoring this one", mgc_file, line_number)
+def _cmd_process_macroend(data, mgcfile, line_number):
+    log('WARNING', "!macroend is used without a !macro preceding it", mgcfile, line_number)
     return
-def _cmd_process_echo(data, mgc_file, line_number):
+def _cmd_process_begin(data, mgcfile, line_number):
+    log('WARNING', "!begin is used more than once; ignoring this one", mgcfile, line_number)
+    return
+def _cmd_process_end(data, mgcfile, line_number):
+    log('WARNING', "!end is used more than once; ignoring this one", mgcfile, line_number)
+    return
+def _cmd_process_echo(data, mgcfile, line_number):
     log('INFO', data[0])
     return
 
@@ -300,6 +311,7 @@ OPCODE_FUNCS = {
     'BIN': _process_bin,
     'HEX': _process_hex,
     'COMMAND': _process_command,
+    'MACRO': _process_macro,
     'WARNING': _process_warning,
     'ERROR': _process_error,
 }
@@ -317,6 +329,8 @@ COMMAND_FUNCS = {
     'asmend': _cmd_process_asmend,
     'c2': _cmd_process_c2,
     'c2end': _cmd_process_c2end,
+    'macro': _cmd_process_macro,
+    'macroend': _cmd_process_macroend,
     'begin': _cmd_process_begin,
     'end': _cmd_process_end,
     'echo': _cmd_process_echo,

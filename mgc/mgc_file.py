@@ -9,6 +9,9 @@ from collections import namedtuple
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 tmp_directory = None
 
+# A dict of macros accessible by name, containing a list of operations
+macros = {}
+
 class File:
     def __init__(self, filepath, filedata):
         self.filepath = filepath
@@ -64,6 +67,7 @@ class MGCFile(File):
         self.filepath = filepath
         self.filedata = self.__preprocess(filedata)
         self.filedata, self.asm_blocks = self.__preprocess_asm(filedata)
+        self.filedata = self.__preprocess_macros(filedata)
         self.mgc_lines = []
 
         asm_block_number = 0
@@ -163,3 +167,37 @@ class MGCFile(File):
                         asm_buffer += asm_line + '\n'
                         filedata[line_number+asm_line_number+1] = ''
         return filedata, asm_blocks
+
+    def __preprocess_macros(self, filedata):
+        """Looks for macro definitions and adds them to the macros dict"""
+        for line_number, line in enumerate(filedata):
+            op_list = parse_opcodes(line)
+            for operation in op_list:
+                if operation.codetype != 'COMMAND': continue
+                if operation.data.name != 'macro': continue
+                macro_name = operation.data.args[0]
+                if macro_name in macros:
+                    log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", self, line_number)
+                if len(operation.data.args) > 1:
+                    # Single-line macros
+                    macro_op_list = parse_opcodes(operation.data.args[1])
+                else:
+                    # Multi-line macros; look for !macroend
+                    macro_op_list = []
+                    for macro_line_number, macro_line in enumerate(filedata[line_number+1:]):
+                        current_op_list = parse_opcodes(macro_line)
+                        macro_operation = None
+                        if current_op_list: macro_operation = current_op_list[0]
+                        if macro_operation:
+                            if macro_operation.codetype == 'COMMAND':
+                                if macro_operation.data.name == 'macroend':
+                                    # Wipe !macroend tag
+                                   filedata[line_number+macro_line_number+1] = ''
+                                   break
+                        macro_op_list += current_op_list
+                        filedata[line_number+macro_line_number+1] = ''
+                for macro_operation in macro_op_list:
+                    if macro_operation.codetype == 'MACRO':
+                        raise CompileError("Macros cannot contain other macros", self, line_number)
+                macros[macro_name] = macro_op_list
+        return filedata
