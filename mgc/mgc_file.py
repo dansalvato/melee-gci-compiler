@@ -32,9 +32,11 @@ class File:
             if r:
                 asm_line_number = int(r.group(1))
                 error = r.group(2)
-                raise CompileError(f"ASM error: {error}", self, line_number+asm_line_number)
+                raise CompileError(f"Error compiling ASM: {error}", self, line_number+asm_line_number)
             else:
                 raise CompileError(f"Error compiling ASM", self, line_number)
+        except Exception as e:
+            raise CompileError(f"Error compiling ASM: {e}", self, line_number)
         if c2:
             c2_ba = "%08x" % c2_ba
             compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')

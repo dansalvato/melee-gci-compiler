@@ -28,67 +28,42 @@ import os
 import sys
 import time
 import shutil
-import logging
 import binascii
 import subprocess
 
 from pathlib import Path
 from .errors import CodetypeError, UnsupportedOSError
 
-log = None
 eabi = {}
-vdappc = ""
 
 def setup():
-    global eabi, vdappc, log
 
     # Simple check to help prevent this from being run multiple times
-    if log is not None or eabi != {} or vdappc != "":
-        return
+    if eabi: return
 
-    here = Path(__file__).parent
+    lib = Path(__file__).parent/"lib"
     # Pathnames for powerpc-eabi executables
-    # TODO: Refactor this to use pathlib
-    for i in ("as", "ld", "objcopy"):
-        eabi[i] = str(here/"lib"/sys.platform)
-
-        if sys.platform == "linux2":
-            if sys.maxint > 2**32:
-                eabi[i] += "_x86_64"
-            else:
-                eabi[i] += "_i686"
-
-        eabi[i] += "/powerpc-eabi-" + i
-
-        if sys.platform == "win32":
-            eabi[i] += ".exe"
-
-    # Pathname for vdappc executable
-    vdappc = str(here/"lib"/sys.platform)
-
+    file_extension = ''
     if sys.platform == "linux2":
-        if sys.maxint > 2**32:
-            vdappc += "_x86_64"
+        if sys.maxsize > 2**32:
+            platform_folder = "linux2_x86_64"
         else:
-            vdappc += "_i686"
-
-    vdappc += "/vdappc"
-
-    if sys.platform == "win32":
-        vdappc += ".exe"
-
-    log = logging.getLogger("PyiiASMH")
-    #hdlr = logging.FileHandler("error.log")
-    formatter = logging.Formatter("\n%(levelname)s (%(asctime)s): %(message)s")
-    #hdlr.setFormatter(formatter)
-    #log.addHandler(hdlr)
+            platform_folder = "linux2_i686"
+    elif sys.platform == "darwin":
+        platform_folder = "darwin"
+    elif sys.platform == "win32":
+        platform_folder = "win32"
+        file_extension = ".exe"
+    eabi['as'] = lib/platform_folder/("powerpc-eabi-as" + file_extension)
+    eabi['ld'] = lib/platform_folder/("powerpc-eabi-ld" + file_extension)
+    eabi['objcopy'] = lib/platform_folder/("powerpc-eabi-objcopy" + file_extension)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     if sys.platform not in ("darwin", "linux2", "win32"):
         raise UnsupportedOSError("'" + sys.platform + "' os is not supported")
     for i in ("as", "ld", "objcopy"):
-        if not os.path.isfile(eabi[i]):
-            raise IOError(eabi[i] + " not found")
+        if not eabi[i].exists():
+            raise IOError(eabi[i].name + " not found")
 
     if txtfile is None:
         txtfile = tmpdir.joinpath("code.txt")
@@ -97,46 +72,22 @@ def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     src1file = tmpdir.joinpath("src1.o")
     src2file = tmpdir.joinpath("src2.o")
 
-    output = subprocess.Popen([eabi["as"], "-mregnames", "-mgekko", "-o", 
+    output = subprocess.Popen([str(eabi["as"]), "-mregnames", "-mgekko", "-o", 
         str(src1file), str(txtfile)], stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE).communicate()
-    #time.sleep(.25)
 
     if output[1]:
         errormsg = output[1]
-        #errormsg = output[1].replace(txtfile + ":", "")
-        #errormsg = errormsg.replace(" Assem", "Assem", 1)
         raise RuntimeError(errormsg)
 
-    subprocess.Popen([eabi["ld"], "-Ttext", "0x80000000", "-o", 
+    subprocess.Popen([str(eabi["ld"]), "-Ttext", "0x80000000", "-o", 
         str(src2file), str(src1file)], stderr=subprocess.PIPE).communicate()
-    #time.sleep(.25)
-    subprocess.Popen([eabi["objcopy"], "-O", "binary", 
+    subprocess.Popen([str(eabi["objcopy"]), "-O", "binary", 
         str(src2file), binfile], stderr=subprocess.PIPE).communicate()
-    #time.sleep(.25)
     
-    # TODO: Pass these exceptions back to the compiler, don't handle here
-    rawhex = ""
-    try:
-        f = open(binfile, "rb")
-    except IOError:
-        log.exception("Failed to open '" + binfile + "'")
-        rawhex = "Something went wrong, please try again.\n"
-    else:
-        try:
-            f.seek(0)
-            rawhex = f.read().hex()
-            #rawhex = format_rawhex(rawhex).upper()
-        except IOError:
-            log.exception("Failed to read '" + binfile + "'")
-            rawhex = "Something went wrong, please try again.\n"
-        except TypeError as e:
-            log.exception(e)
-            rawhex = "Something went wrong, please try again.\n"
-        finally:
-            f.close() 
-    finally:
-        return rawhex
+    with open(binfile, "rb") as f:
+        rawhex = f.read().hex()
+    return rawhex
 
 def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
     if ctype is None:
@@ -160,9 +111,9 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
 
         pre = {"8":"C", "0":"D"}.get(bapo[0], "C")
         if bapo[1] == "1":
-            pre += "3" + bapo[2:]# + " "
+            pre += "3" + bapo[2:]
         else:
-            pre += "2" + bapo[2:]# + " "
+            pre += "2" + bapo[2:]
         
         if ctype == "C2D2":
             pre += numlines
@@ -173,7 +124,7 @@ def construct_code(rawhex, bapo=None, xor=None, chksum=None, ctype=None):
                if int(numlines, 16) <= 0xF:
                    numlines = "0"+numlines
 
-               pre += bapo[2:] + " " + chksum + xor + numlines# + "\n"
+               pre += bapo[2:] + " " + chksum + xor + numlines
                return pre + rawhex + post
             else:
                raise CodetypeError("Number of lines (" + 
