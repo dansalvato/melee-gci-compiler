@@ -2,8 +2,10 @@
 Operations to execute."""
 import re
 from .pyiiasmh import ppctools
+from . import lineparser
 from .lineparser import *
 from .errors import *
+from .logger import log
 from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
@@ -81,6 +83,12 @@ class MGCFile(File):
                     if operation.data.name == 'asm' or operation.data.name == 'c2':
                         op_list[index].data.args.append(asm_block_number)
                         asm_block_number += 1
+                    elif operation.data.name == 'define':
+                        alias_name = '[' + operation.data.args[0] + ']'
+                        alias_data = operation.data.args[1]
+                        if alias_name in lineparser.aliases:
+                            log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", self, line_number)
+                        lineparser.aliases[alias_name] = alias_data
                 self.mgc_lines.append(MGCLine(line_number, op_list))
 
 

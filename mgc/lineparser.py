@@ -29,7 +29,10 @@ COMMANDS = {
     'echo': [str],
     'macro': [None],
     'macroend': [],
+    'define': [None, None]
     }
+
+aliases = {}
 
 Operation = namedtuple('Operation', ['codetype', 'data'], defaults=[None, None])
 Command = namedtuple('Command', ['name', 'args'], defaults=[None, []])
@@ -42,6 +45,12 @@ def parse_opcodes(script_line):
     # If the line is empty, we're done
     if script_line == '':
         return op_list
+
+    # Replace aliases
+    aliased_line = script_line
+    for alias in aliases:
+        if alias in script_line: aliased_line = script_line.replace(alias, aliases[alias])
+    script_line = aliased_line
 
     # Check if line is hex
     if script_line[0] in string.hexdigits:
@@ -89,13 +98,19 @@ def parse_opcodes(script_line):
         else:
             command_args = script_line.split(' ')
             command_name = command_args.pop(0)[1:]
-            # If command contains quotes, we ignore command_args
-            # TODO: Enforce correct number of args even if command has quotes
-            command_quotes = script_line.split('"')[1::2]
-            if command_quotes:
-                # Re-add the quotes so compiler can enforce them
-                command_quotes = [f'"{s}"' for s in command_quotes]
-                command_args = command_quotes
+            # Only everything in non-quotes is separated by spaces
+            if '"' in script_line:
+                quote_args = ' '.join(command_args)
+                quote_args = quote_args.split('"')
+                command_args = []
+                for index, arg in enumerate(quote_args):
+                    arg = arg.strip()
+                    if arg == '': continue
+                    if index % 2 == 0: command_args += arg.split(' ')
+                    else: command_args.append('"' + arg + '"')
+            # Rejoin args if !define
+            if command_name == 'define' and len(command_args) > 2:
+                command_args = [command_args[0], ' '.join(command_args[1:])]
             # Send the Command for data validation
             validated_commands = _parse_command(Command(command_name, command_args))
             op_list += validated_commands

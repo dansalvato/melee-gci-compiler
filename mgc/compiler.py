@@ -295,6 +295,10 @@ def _cmd_process_macro(data, mgcfile, line_number):
 def _cmd_process_macroend(data, mgcfile, line_number):
     log('WARNING', "!macroend is used without a !macro preceding it", mgcfile, line_number)
     return
+def _cmd_process_define(data, mgcfile, line_number):
+    # Aliases are added to the dict in MGCFile's init while the script is being
+    # parsed into Operations
+    return
 def _cmd_process_begin(data, mgcfile, line_number):
     log('WARNING', "!begin is used more than once; ignoring this one", mgcfile, line_number)
     return
@@ -331,6 +335,7 @@ COMMAND_FUNCS = {
     'c2end': _cmd_process_c2end,
     'macro': _cmd_process_macro,
     'macroend': _cmd_process_macroend,
+    'define': _cmd_process_define,
     'begin': _cmd_process_begin,
     'end': _cmd_process_end,
     'echo': _cmd_process_echo,
