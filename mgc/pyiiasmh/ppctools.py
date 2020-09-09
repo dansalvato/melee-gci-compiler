@@ -36,22 +36,22 @@ def setup():
     # Simple check to help prevent this from being run multiple times
     if eabi: return
 
-    lib = Path(__file__).parent/"lib"
+    bin_root = Path(__file__).parent/"bin"
     # Pathnames for powerpc-eabi executables
     file_extension = ''
-    if sys.platform == "linux2":
+    if sys.platform == "linux":
         if sys.maxsize > 2**32:
-            platform_folder = "linux2_x86_64"
+            platform_folder = "linux_x86_64"
         else:
-            platform_folder = "linux2_i686"
+            platform_folder = "linux_i686"
     elif sys.platform == "darwin":
         platform_folder = "darwin"
     elif sys.platform == "win32":
         platform_folder = "win32"
         file_extension = ".exe"
-    eabi['as'] = lib/platform_folder/("powerpc-eabi-as" + file_extension)
-    eabi['ld'] = lib/platform_folder/("powerpc-eabi-ld" + file_extension)
-    eabi['objcopy'] = lib/platform_folder/("powerpc-eabi-objcopy" + file_extension)
+    eabi['as'] = bin_root/platform_folder/("powerpc-eabi-as" + file_extension)
+    eabi['ld'] = bin_root/platform_folder/("powerpc-eabi-ld" + file_extension)
+    eabi['objcopy'] = bin_root/platform_folder/("powerpc-eabi-objcopy" + file_extension)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     if sys.platform not in ("darwin", "linux2", "win32"):
