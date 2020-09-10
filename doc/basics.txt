@@ -50,9 +50,11 @@ unique ways.
 !geckocodelist "path/to/codelist"
 	Compiles the Gecko codelist text file, then adds the resulting binary to
 	Melee memory. Gecko codelists have their own format that is not covered
-	here. This opcode is for convenience purposes only for those using Gecko
+	here. This command is for convenience purposes only for those using Gecko
 	codelist files, but adding your Gecko codes directly into the build script
-	will work equally well, because they're just hex anyway.
+	will work equally well, because they're just hex anyway. If not using
+	!geckocodelist, make sure your Gecko codeset begins with "00d0c0de 00d0c0de"
+	and ends with "f0000000 00000000".
 !string "This is a text string"
 	Adds a raw ASCII text string to Melee memory.
 !asm ... !asmend
