@@ -13,8 +13,10 @@ STANDARD OPERATIONS
 	also not case-sensitive.
 %10010110
 	Lines beginning with '%' denote binary instead of hex.
-+macro_name
-	Runs a macro that was defined using !macro (see Special Commands).
++macro_name 10
+	Runs a macro that was defined using !macro (see Special Commands). Optional
+	count argument specifies how many times to run the macro, eg. 10 (ten) or
+	0x10 (sixteen) times.
 [alias_name]
 	Gets replaced by the data specified using !define (see Special Commands).
 # Comment
