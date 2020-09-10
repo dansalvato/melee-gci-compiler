@@ -1,0 +1,77 @@
+MGC SCRIPT FORMAT BASICS
+
+This is an overview of the main features and usage of the MGC script language.
+To see most of these in practice, feel free to examine the scripts in the
+'example' folder.
+
+STANDARD OPERATIONS
+-------------------
+
+0123456789ABCDEF
+	All standalone hex is written to Melee memory as-is. Whitespace is ignored,
+	so formats like "0D 15 3A 5E" and "c2380580 00000006" are fine too. It is
+	also not case-sensitive.
+%10010110
+	Lines beginning with '%' denote binary instead of hex.
++macro_name
+	Runs a macro that was defined using !macro (see Special Commands).
+[alias_name]
+	Gets replaced by the data specified using !define (see Special Commands).
+# Comment
+	Anything after '#' on a line is a comment and ignored by the compiler.
+/* ... */
+	Multi-line comment. Anything between the comment tags is ignored by the
+	compiler.
+
+
+SPECIAL COMMANDS
+----------------
+Commands give the compiler special information or allow you to load data in
+unique ways.
+
+!loc 8045f000
+	Denotes where to inject any following data in Melee memory, until the next
+	location is specified.
+!gci 4f50
+	Advanced usage only - lets you specify a GCI offset location rather than a
+	Melee memory location to inject data to. You'll almost always want to use
+	!loc to specify where in Melee memory you want the data to go, rather than
+	worry about where it goes in the GCI.
+!add 1a0
+	Adds a relative amount to the loc pointer.
+!src "path/to/source"
+	Adds the given MGC script file to the build script at that location.
+!asmsrc "path/to/source"
+	Compiles and adds the ASM source file to the current location.
+!file "path/to/file"
+	Adds the entire binary file directly to Melee memory.
+!geckocodelist "path/to/codelist"
+	Compiles the Gecko codelist text file, then adds the resulting binary to
+	Melee memory. Gecko codelists have their own format that is not covered
+	here. This opcode is for convenience purposes only for those using Gecko
+	codelist files, but adding your Gecko codes directly into the build script
+	will work equally well, because they're just hex anyway.
+!string "This is a text string"
+	Adds a raw ASCII text string to Melee memory.
+!asm ... !asmend
+	Compiles the PPC ASM and adds the resulting binary to Melee memory.
+!c2 80380580 ... !c2end
+	Compiles the PPC ASM and wraps it in a Gecko C2 code, then adds the
+	resulting binary to Melee memory.
+!begin
+	Optionally denotes where in the current file the build script begins.
+	Anything before this line is ignored by the compiler. If not specified, the
+	build script begins on the first line of the file.
+!end
+	Optionally denotes where in the current file the build script ends. Anything
+	after this line is ignored by the compiler. If not specified, the build
+	script ends on the last line of the file.
+!echo "message"
+	Prints a message to the console during compilation.
+!macro macro_name ... !macroend
+	Defines a macro of script lines that can be applied anywhere.
+!define alias_name ...
+	Defines an alias. Lets you use [alias_name] in your script and it will be
+	replaced with the contents of the alias before the script line is even
+	processed. For example, "!define codeset_loc 80465000" will later let you
+	write "!loc [codeset_loc]" and it will be parsed as "!loc 80465000".
