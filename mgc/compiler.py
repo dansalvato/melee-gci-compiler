@@ -181,12 +181,16 @@ def _write_data(data, mgc_file, line_number):
     """Writes a byte array to the GCI"""
     global gci_data, loc_pointer, gci_pointer, gci_pointer_mode, write_history
     if gci_pointer_mode:
+        if gci_pointer < 0:
+            raise CompileError("Data pointer must be a positive value", mgc_file, line_number)
         log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
         if gci_pointer + len(data) > len(gci_data):
             raise CompileError("Attempting to write past the end of the GCI", mgc_file, line_number)
         write_table = [(gci_pointer, len(data))]
         gci_pointer += len(data)
     else:
+        if loc_pointer < 0:
+            raise CompileError("Data pointer must be a positive value", mgc_file, line_number)
         log('DEBUG', f"Writing 0x{len(data):x} bytes in loc mode:", mgc_file, line_number)
         try:
             write_table = data2gci(loc_pointer, len(data))
