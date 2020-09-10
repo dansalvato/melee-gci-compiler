@@ -40,12 +40,13 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
     logger.silent_log = silent
     logger.debug_log = debug
     # Set root directory
-    root_mgc_path = Path(root_mgc_path).absolute()
-    mgc_file.tmp_directory = root_mgc_path.parent/"tmp"
-    try:
-        mgc_file.tmp_directory.mkdir(exist_ok=True)
-    except FileNotFoundError:
-        raise CompileError("Unable to create tmp directory")
+    if root_mgc_path:
+        root_mgc_path = Path(root_mgc_path).absolute()
+        mgc_file.tmp_directory = root_mgc_path.parent/"tmp"
+        try:
+            mgc_file.tmp_directory.mkdir(exist_ok=True)
+        except FileNotFoundError:
+            raise CompileError("Unable to create tmp directory")
 
     if input_gci:
         log('INFO', "Loading and unpacking input GCI")
@@ -71,10 +72,11 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         _compile_file(mgc_files[init_gci_path])
         logger.silent_log = silent
     write_history = []
-    # Load all src files into mgc_files
-    _load_all_mgc_files(root_mgc_path)
-    # Begin compile
-    _compile_file(mgc_files[root_mgc_path])
+    if root_mgc_path:
+        # Load all src files into mgc_files
+        _load_all_mgc_files(root_mgc_path)
+        # Begin compile
+        _compile_file(mgc_files[root_mgc_path])
 
     if input_gci:
         input_gci.raw_bytes = gci_data
