@@ -234,12 +234,14 @@ def _process_error(data, mgcfile, line_number):
     raise CompileError(data, mgcfile, line_number)
     return
 def _process_macro(data, mgcfile, line_number):
-    macro_name = data
+    macro_name = data.name
+    macro_count = data.count
     if not macro_name in mgc_file.macros:
         raise CompileError(f"Undefined macro: {macro_name}, mgcfile, line_number")
     op_list = mgc_file.macros[macro_name]
-    for op in op_list:
-        OPCODE_FUNCS[op.codetype](op.data, mgcfile, line_number)
+    for count in range(macro_count):
+        for op in op_list:
+            OPCODE_FUNCS[op.codetype](op.data, mgcfile, line_number)
 
 
 def _cmd_process_loc(data, mgcfile, line_number):

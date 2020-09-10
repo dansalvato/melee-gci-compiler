@@ -40,6 +40,7 @@ aliases = {}
 
 Operation = namedtuple('Operation', ['codetype', 'data'], defaults=[None, None])
 Command = namedtuple('Command', ['name', 'args'], defaults=[None, []])
+Macro = namedtuple('Macro', ['name', 'count'], defaults=[None, 1])
 # Generic errors
 SYNTAX_ERROR = Operation('ERROR', "Invalid syntax")
 
@@ -93,10 +94,22 @@ def parse_opcodes(script_line):
         # Remove + character
         script_line = script_line[1:]
         args = script_line.split(' ')
-        if len(args) > 2:
-            op_list.append(SYNTAX_ERROR)
+        if len(args) == 1:
+            op_list.append(Operation('MACRO', Macro(script_line, 1)))
+        elif len(args) == 2:
+            name = args[0]
+            count = args[1]
+            try:
+                if count[:2] == '0x': count = int(count, 16)
+                else: count = int(count)
+                if count < 1:
+                    op_list.append(Operation('ERROR', "Macro count must be greater than 0"))
+                else:
+                    op_list.append(Operation('MACRO', Macro(name, count)))
+            except ValueError:
+                op_list.append(SYNTAX_ERROR)
         else:
-            op_list.append(Operation('MACRO', script_line))
+            op_list.append(SYNTAX_ERROR)
 
     # Check if line is a command
     elif script_line[0] == '!':
