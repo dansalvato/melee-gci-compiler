@@ -34,7 +34,7 @@ mgc_stack = []
 # more than once
 write_history = []
 
-def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=False):
+def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
     global write_history, gci_data
     logger.silent_log = silent
@@ -46,10 +46,11 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
         mgc_file.tmp_directory.mkdir(exist_ok=True)
     except FileNotFoundError:
         raise CompileError("Unable to create tmp directory")
+
     if input_gci:
         log('INFO', "Loading and unpacking input GCI")
         try:
-            input_gci = melee_gamedata(input_gci, packed=True)
+            input_gci = melee_gamedata(filename=input_gci, packed=True)
         except FileNotFoundError:
             raise CompileError(f"Input GCI not found: {input_gci}")
         try:
@@ -59,15 +60,11 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
         gci_data = input_gci.raw_bytes
         if len(gci_data) != 0x16040:
             raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
-    if not noclean:
+    else:
         # Compile init_gci.mgc which writes the data found in a clean save file
-        log('INFO', "Initializing GCI")
-        # Zero out all block data
-        for i in range(10):
-            data_pointer = GCI_START_OFFSET + (i * 0x2000)
-            gci_data[data_pointer:data_pointer+0x1f2c] = bytearray(0x1f2c)
         # Silently load and compile init_gci.mgc which loads all default Melee
         # save data
+        log('INFO', "Initializing new GCI")
         init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
         logger.silent_log = True
         _load_all_mgc_files(init_gci_path)
@@ -80,12 +77,14 @@ def compile(root_mgc_path, input_gci=None, silent=False, noclean=False, debug=Fa
     _compile_file(mgc_files[root_mgc_path])
 
     if input_gci:
-        log('INFO', "Packing GCI")
         input_gci.raw_bytes = gci_data
-        input_gci.recompute_checksums()
+    else:
+        input_gci = melee_gamedata(raw_bytes=gci_data)
+    input_gci.recompute_checksums()
+    if not nopack:
+        log('INFO', "Packing GCI")
         input_gci.pack()
-        return input_gci.raw_bytes
-    else: return gci_data
+    return input_gci.raw_bytes
 
 def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
     """Compiles the data of a single file; !src makes this function recursive"""

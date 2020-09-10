@@ -13,10 +13,10 @@ USAGE_TEXT = """\
 Usage: melee-gci-compiler.py [options] <script_path>
 
 <script_path>  The path to the MGC script file you want to compile.
--i             Any Melee GCI file. Required to generate a usable Melee save.
+-i             Optionally input a Melee GCI to use its existing data as a base.
 -o             The GCI file to output. If omitted, no data will be written.
 -h, --help     Displays this usage text.
---noclean      Do not clean/initialize the input GCI file before compiling.
+--nopack       Do not pack the GCI, so you can inspect the outputted data.
 --silent       Suppress command line output, except for fatal errors.
 --debug        Output extra information while compiling and on errors.
 """
@@ -26,12 +26,12 @@ def main(argv):
     script_path = None
     input_gci = None
     output_gci = None
-    noclean = False
+    nopack = False
     silent = False
     debug = False
     logger.silent_log = silent
     try:
-        opts, args = getopt.getopt(argv[1:],'i:o:h',['help','noclean','silent','debug'])
+        opts, args = getopt.getopt(argv[1:],'i:o:h',['help','nopack','silent','debug'])
     except getopt.GetoptError:
         print(USAGE_TEXT)
         sys.exit(2)
@@ -45,7 +45,7 @@ def main(argv):
             sys.exit()
         elif opt == '-i': input_gci = arg
         elif opt == '-o': output_gci = arg
-        elif opt == '--noclean': noclean = True
+        elif opt == '--nopack': nopack = True
         elif opt == '--silent': silent = True
         elif opt == '--debug': debug = True
         else:
@@ -53,7 +53,7 @@ def main(argv):
             sys.exit(2)
 
     try:
-        gci_data = compiler.compile(script_path, input_gci=input_gci, noclean=noclean, silent=silent, debug=debug)
+        gci_data = compiler.compile(script_path, input_gci=input_gci, nopack=nopack, silent=silent, debug=debug)
     except CompileError as e:
         if debug: raise
         else:
@@ -62,7 +62,7 @@ def main(argv):
             sys.exit(10)
     log('INFO', "Compile successful")
     if not output_gci: log('INFO', "No output GCI specified; no files will be written")
-    elif not input_gci: log('INFO', "No input GCI specified; writing raw data to file")
+    elif nopack: log('INFO', "Writing unpacked GCI file; not loadable by Melee")
     else: log('INFO', "Writing final GCI file")
     if output_gci:
         try:

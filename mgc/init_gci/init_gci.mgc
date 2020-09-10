@@ -40,6 +40,34 @@
 	!add d4
 !macroend
 
+
+# Block headers
+
+!gci 0
+!file "header.bin"
+
+!gci 2050
+00 01 00 00 00 00 00 01 00 17 90 02 40 1F 2C 00
+!gci 4050
+00 02 00 01 00 17 90 02 40 1F 2C 03 40 1F 2C 00
+!gci 6050
+00 03 00 02 40 1F 2C 03 40 1F 2C 04 40 1F 2C 00
+!gci 8050
+00 04 00 03 40 1F 2C 04 40 1F 2C 05 40 1F 2C 00
+!gci a050
+00 05 00 04 40 1F 2C 05 40 1F 2C 06 40 1F 2C 00
+!gci c050
+00 06 00 05 40 1F 2C 06 40 1F 2C 07 40 1F 2C 00
+!gci e050
+00 07 00 06 40 1F 2C 07 40 1F 2C 08 40 1F 2C 00
+!gci 10050
+00 08 00 06 40 1F 2C 07 40 1F 2C 08 40 1F 2C 00
+!gci 12050
+FF FF 00 07 40 1F 2C 08 40 1F 2C 09 00 00 00 00
+!gci 14050
+00 01 00 00 00 00 00 01 00 17 90 02 40 1F 2C 00
+
+
 # Block 0: 0x02060
 
 # This block is an exact copy of block 9 and isn't even read into memory

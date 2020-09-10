@@ -11,20 +11,26 @@ class melee_gci(object):
     """ Base class for GCI files. Just basic setter/getter stuff for dentry
         data, and some machinery for reading files """
 
-    def __init__(self, filename, packed=None):
-        self._filename = os.path.basename(filename).split(".")[0]
-        self.raw_bytes = bytearray()
-        try:
-            with open(filename, "rb") as fd:
-                self.raw_bytes = bytearray(fd.read())
-            self.filesize = len(self.raw_bytes)
-            log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
-        except FileNotFoundError as e:
-            err(e)
-            self.raw_bytes = None
-            self.filesize = None
+    def __init__(self, filename=None, raw_bytes=None, packed=None):
+        if filename:
+            self._filename = os.path.basename(filename).split(".")[0]
+            self.raw_bytes = bytearray()
+            try:
+                with open(filename, "rb") as fd:
+                    self.raw_bytes = bytearray(fd.read())
+                self.filesize = len(self.raw_bytes)
+                self.packed = packed
+                log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
+            except FileNotFoundError as e:
+                err(e)
+                self.raw_bytes = None
+                self.filesize = None
+                return None
+        elif raw_bytes:
+            self.raw_bytes = raw_bytes
+            self.filesize = len(raw_bytes)
+        else:
             return None
-
         # Let the user tell us whether or not the GCI is packed when importing
         # a file - this should help us tell the user not to do something that
         # might end up corrupting their data (or something to that effect).
