@@ -12,24 +12,28 @@ CODETYPES = [
     ]
 COMMANDS = {
     # List of each command and its expected number and type of args
-    'loc': [int],
-    'gci': [int],
-    'add': [int],
-    'src': [str],
-    'asmsrc': [str],
-    'file': [str],
-    'geckocodelist': [str],
-    'string': [str],
+    # 'hex': A hex representation of any number eg. 1a0
+    # 'int': A decimal number (eg. 10) or hex in 0x notation (eg. 0xa)
+    # 'var': Any legal string, eg. for defining a macro
+    # 'str': A string wrapped in quotes, eg. for file names
+    'loc': ['hex'],
+    'gci': ['hex'],
+    'add': ['hex'],
+    'src': ['str'],
+    'asmsrc': ['str'],
+    'file': ['str'],
+    'geckocodelist': ['str'],
+    'string': ['str'],
     'asm': [],
     'asmend': [],
-    'c2': [int],
+    'c2': ['hex'],
     'c2end': [],
     'begin': [],
     'end': [],
-    'echo': [str],
-    'macro': [None],
+    'echo': ['str'],
+    'macro': ['var'],
     'macroend': [],
-    'define': [None, None]
+    'define': ['var', 'var']
     }
 
 aliases = {}
@@ -65,6 +69,9 @@ def parse_opcodes(script_line):
             op_list.append(Operation('HEX', script_line))
         except ValueError:
             op_list.append(SYNTAX_ERROR)
+    # If we're not hex, then 1-character strings (eg. %, +, !) always error
+    elif len(script_line) == 1:
+        op_list.append(SYNTAX_ERROR)
     # Check if line is binary
     elif script_line[0] == '%':
         # Remove % character
@@ -85,7 +92,8 @@ def parse_opcodes(script_line):
     elif script_line[0] == '+':
         # Remove + character
         script_line = script_line[1:]
-        if ' ' in script_line:
+        args = script_line.split(' ')
+        if len(args) > 2:
             op_list.append(SYNTAX_ERROR)
         else:
             op_list.append(Operation('MACRO', script_line))
@@ -146,21 +154,20 @@ def _parse_command(command):
     if expected_types != None:
         for index, arg in enumerate(untyped_args):
             expected_type = expected_types[index]
-            if expected_type == str:
+            if expected_type == 'str':
                 # String arguments must be surrounded by quotes
                 if arg[0] != '"' or arg[len(arg)-1] != '"':
                     return [Operation('ERROR', f"Command argument {index+1} must be a string")]
                 # For strings, just append our Command as-is because data is
                 # already a string, but the quotes are no longer needed
                 typed_args.append(arg.replace('"', ''))
-            elif expected_type == int:
-                # As of now, int type always means hex
+            elif expected_type == 'hex':
                 try:
                     typed_arg = int(arg, 16)
                     typed_args.append(typed_arg)
                 except ValueError:
                     return [Operation('ERROR', f"Command argument {index+1} must be a hex value")]
-            elif expected_type == None:
+            elif expected_type == 'var':
                 typed_args.append(arg)
             else:
                 raise ValueError("Unsupported command argument type")
