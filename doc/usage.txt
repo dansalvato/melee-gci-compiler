@@ -1,9 +1,9 @@
 Usage: melee-gci-compiler.py [options] <script_path>
 
 <script_path>  The path to the MGC script file you want to compile.
--i             Any Melee GCI file. Required to generate a usable Melee save.
+-i             Optionally input a Melee GCI to use its existing data as a base.
 -o             The GCI file to output. If omitted, no data will be written.
 -h, --help     Displays this usage text.
---noclean      Do not clean/initialize the input GCI file before compiling.
+--nopack       Do not pack the GCI, so you can inspect the outputted data.
 --silent       Suppress command line output, except for fatal errors.
 --debug        Output extra information while compiling and on errors.
