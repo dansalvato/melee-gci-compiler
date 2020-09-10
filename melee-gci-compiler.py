@@ -10,9 +10,9 @@ from mgc.logger import log
 from mgc.errors import CompileError
 
 USAGE_TEXT = """\
-Usage: melee-gci-compiler.py [options] <script_path>
+Usage: melee-gci-compiler.py [options] [script_path]
 
-<script_path>  The path to the MGC script file you want to compile.
+script_path    The path to the MGC script file you want to compile.
 -i             Optionally input a Melee GCI to use its existing data as a base.
 -o             The GCI file to output. If omitted, no data will be written.
 -h, --help     Displays this usage text.
