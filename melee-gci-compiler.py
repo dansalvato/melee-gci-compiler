@@ -38,6 +38,9 @@ def main(argv):
     if len(args) > 1:
         print(USAGE_TEXT)
         sys.exit(2)
+    elif len(args) == 0 and len(opts) == 0:
+        print(USAGE_TEXT)
+        sys.exit(0)
     elif len(args) == 0:
         log('WARNING', "No MGC script specified; no custom data will be compiled")
     else:
