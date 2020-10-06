@@ -54,7 +54,7 @@ def setup():
     eabi['objcopy'] = bin_root/platform_folder/("powerpc-eabi-objcopy" + file_extension)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
-    if sys.platform not in ("darwin", "linux2", "win32"):
+    if sys.platform not in ("darwin", "linux", "win32"):
         raise UnsupportedOSError("'" + sys.platform + "' os is not supported")
     for i in ("as", "ld", "objcopy"):
         if not eabi[i].exists():
