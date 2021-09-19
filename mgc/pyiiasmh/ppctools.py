@@ -39,7 +39,7 @@ def setup():
     bin_root = Path(__file__).parent/"bin"
     # Pathnames for powerpc-eabi executables
     file_extension = '.exe' if platform.system().lower() == "windows" else ''
-    platform_folder = bin_root/(platform.system().lower() + '_' + platform.machine())
+    platform_folder = bin_root/(platform.system().lower() + '_' + platform.machine().lower())
 
     eabi['as'] = platform_folder/("powerpc-eabi-as" + file_extension)
     eabi['ld'] = platform_folder/("powerpc-eabi-ld" + file_extension)
