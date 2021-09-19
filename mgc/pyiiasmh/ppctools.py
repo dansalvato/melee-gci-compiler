@@ -59,7 +59,7 @@ def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     src1file = tmpdir.joinpath("src1.o")
     src2file = tmpdir.joinpath("src2.o")
 
-    output = subprocess.Popen([str(eabi["as"]), "-mregnames", "-mgekko", "-o", 
+    output = subprocess.Popen([str(eabi["as"]), "-W", "-mregnames", "-mgekko", "-o", 
         str(src1file), str(txtfile)], stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE).communicate()
 
