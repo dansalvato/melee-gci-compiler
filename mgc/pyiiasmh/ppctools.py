@@ -24,7 +24,7 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import sys
+import platform
 import subprocess
 from pathlib import Path
 from .errors import CodetypeError, UnsupportedOSError
@@ -38,24 +38,16 @@ def setup():
 
     bin_root = Path(__file__).parent/"bin"
     # Pathnames for powerpc-eabi executables
-    file_extension = ''
-    if sys.platform == "linux":
-        if sys.maxsize > 2**32:
-            platform_folder = "linux_x86_64"
-        else:
-            platform_folder = "linux_i686"
-    elif sys.platform == "darwin":
-        platform_folder = "darwin"
-    elif sys.platform == "win32":
-        platform_folder = "win32"
-        file_extension = ".exe"
-    eabi['as'] = bin_root/platform_folder/("powerpc-eabi-as" + file_extension)
-    eabi['ld'] = bin_root/platform_folder/("powerpc-eabi-ld" + file_extension)
-    eabi['objcopy'] = bin_root/platform_folder/("powerpc-eabi-objcopy" + file_extension)
+    file_extension = '.exe' if platform.system().lower() == "windows" else ''
+    platform_folder = bin_root/(platform.system().lower() + '_' + platform.machine().lower())
+
+    eabi['as'] = platform_folder/("powerpc-eabi-as" + file_extension)
+    eabi['ld'] = platform_folder/("powerpc-eabi-ld" + file_extension)
+    eabi['objcopy'] = platform_folder/("powerpc-eabi-objcopy" + file_extension)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
-    if sys.platform not in ("darwin", "linux", "win32"):
-        raise UnsupportedOSError("'" + sys.platform + "' os is not supported")
+    if platform.system().lower() not in ("darwin", "linux", "win32"):
+        raise UnsupportedOSError("'" + platform.system() + "' os is not supported")
     for i in ("as", "ld", "objcopy"):
         if not eabi[i].exists():
             raise IOError(eabi[i].name + " not found")
@@ -67,7 +59,7 @@ def asm_opcodes(tmpdir, txtfile=None, binfile=None):
     src1file = tmpdir.joinpath("src1.o")
     src2file = tmpdir.joinpath("src2.o")
 
-    output = subprocess.Popen([str(eabi["as"]), "-mregnames", "-mgekko", "-o", 
+    output = subprocess.Popen([str(eabi["as"]), "-W", "-mregnames", "-mgekko", "-o", 
         str(src1file), str(txtfile)], stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE).communicate()
 
