@@ -1,6 +1,5 @@
 """ meleegci.py - interfaces for manipulating Melee savefiles """
 
-import os
 import struct
 
 from .gci_encode import decode_byte as unpack
@@ -13,7 +12,6 @@ class melee_gci(object):
 
     def __init__(self, filename=None, raw_bytes=None, packed=None):
         if filename:
-            self._filename = os.path.basename(filename).split(".")[0]
             self.raw_bytes = bytearray()
             try:
                 with open(filename, "rb") as fd:
