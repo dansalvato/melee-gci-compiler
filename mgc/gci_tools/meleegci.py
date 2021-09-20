@@ -23,7 +23,6 @@ class melee_gci(object):
                 log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
             except FileNotFoundError as e:
                 err(e)
-                self.raw_bytes = None
                 self.filesize = None
                 return None
         elif raw_bytes:
