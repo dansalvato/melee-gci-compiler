@@ -190,7 +190,7 @@ class melee_gamedata(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -212,7 +212,7 @@ class melee_gamedata(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -329,7 +329,7 @@ class melee_snapshot(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize() - 1):
+        for _ in range(0, self.blocksize() - 1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -364,7 +364,7 @@ class melee_snapshot(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
