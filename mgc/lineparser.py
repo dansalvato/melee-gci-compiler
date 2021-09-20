@@ -160,7 +160,6 @@ def _parse_command(command):
         expected_arg_count = len(COMMANDS[command.name])
         if arg_count != expected_arg_count:
             return [Operation('ERROR', f"Command expected {expected_arg_count} arg(s) but received {arg_count}")]
-    op_list = []
     untyped_args = command.args
     typed_args = []
     expected_types = COMMANDS[command.name] # List of arg types for this Command

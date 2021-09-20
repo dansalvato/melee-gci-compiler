@@ -1,6 +1,5 @@
 """ meleegci.py - interfaces for manipulating Melee savefiles """
 
-import os
 import struct
 
 from .gci_encode import decode_byte as unpack
@@ -13,7 +12,6 @@ class melee_gci(object):
 
     def __init__(self, filename=None, raw_bytes=None, packed=None):
         if filename:
-            self._filename = os.path.basename(filename).split(".")[0]
             self.raw_bytes = bytearray()
             try:
                 with open(filename, "rb") as fd:
@@ -21,11 +19,8 @@ class melee_gci(object):
                 self.filesize = len(self.raw_bytes)
                 self.packed = packed
                 log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
-            except FileNotFoundError as e:
-                err(e)
-                self.raw_bytes = None
-                self.filesize = None
-                return None
+            except FileNotFoundError:
+                raise
         elif raw_bytes:
             self.raw_bytes = raw_bytes
             self.filesize = len(raw_bytes)
@@ -195,7 +190,7 @@ class melee_gamedata(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -217,7 +212,7 @@ class melee_gamedata(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -334,7 +329,7 @@ class melee_snapshot(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize() - 1):
+        for _ in range(0, self.blocksize() - 1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]
@@ -369,7 +364,7 @@ class melee_snapshot(melee_gci):
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
         DATA_SIZE = 0x1ff0
-        for j in range(0, self.blocksize()-1):
+        for _ in range(0, self.blocksize()-1):
             prev = self.raw_bytes[PREV_BYTE_OFFSET]
             for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
                 cursor = self.raw_bytes[i]

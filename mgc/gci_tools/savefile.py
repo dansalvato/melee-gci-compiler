@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 """ savefile - example script for [un]packing a save file. """
 
-import os, sys
-import struct
+import sys
 
 from .meleegci import *
 

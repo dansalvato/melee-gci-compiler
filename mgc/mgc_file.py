@@ -1,6 +1,7 @@
 """mgc_file.py: A class that stores the data from an MGC file as a list of
 Operations to execute."""
 import re
+from pathlib import Path
 from .pyiiasmh import ppctools
 from . import lineparser
 from .lineparser import *
@@ -9,7 +10,8 @@ from .logger import log
 from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
-tmp_directory = None
+# This gets changed once compiler.py has a root MGC path
+tmp_directory = Path.cwd()
 
 # A dict of macros accessible by name, containing a list of operations
 macros = {}
