@@ -137,8 +137,8 @@ class MGCFile(File):
                 multiline_comment = True
             # Trim whitespace
             line = line.strip()
-            # Consolidate multiple spaces into one space
-            line = re.sub(r'\s+', ' ', line)
+            # Consolidate multiple spaces into one space, unless in quotes
+            line = re.sub(r'\s+(?=([^"]*"[^"]*")*[^"]*$)', ' ', line)
 
             # Look for !begin and !end
             op_list = parse_opcodes(line)

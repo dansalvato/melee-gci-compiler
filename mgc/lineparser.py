@@ -125,7 +125,6 @@ def parse_opcodes(script_line):
                 quote_args = quote_args.split('"')
                 command_args = []
                 for index, arg in enumerate(quote_args):
-                    arg = arg.strip()
                     if arg == '': continue
                     if index % 2 == 0: command_args += arg.split(' ')
                     else: command_args.append('"' + arg + '"')
