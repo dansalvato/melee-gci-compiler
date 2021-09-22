@@ -19,6 +19,7 @@ gci_data = bytearray(0x16040)
 loc_pointer = 0
 gci_pointer = 0
 gci_pointer_mode = False
+patch_mode = False
 
 # A dict that contains all loaded MGC filedata, accessible by filename.
 # We load all MGC files from disk ahead of time and use this dict to send
@@ -36,6 +37,9 @@ write_history = []
 
 # If !blockorder is used, the new block order goes here
 block_order = []
+
+# A list of (address, bytearray) tuples for writing !patch data at the end
+patch_table = []
 
 def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
@@ -88,6 +92,9 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         input_gci.block_order = block_order
         input_gci.reorder_blocks()
     input_gci.recompute_checksums()
+    # Done with everything except packing, write the patch table
+    for address, data in patch_table:
+        input_gci.raw_bytes[address:address+len(data)] = data
     if not nopack:
         log('INFO', "Packing GCI")
         input_gci.pack()
@@ -184,13 +191,19 @@ def _load_all_mgc_files(root_filepath):
 
 def _write_data(data, mgc_file, line_number):
     """Writes a byte array to the GCI"""
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode, write_history
+    global gci_data, loc_pointer, gci_pointer, write_history, block_order, patch_table
     if gci_pointer_mode:
         if gci_pointer < 0:
             raise CompileError("Data pointer must be a positive value", mgc_file, line_number)
-        log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
+        if not patch_mode:
+            log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
         if gci_pointer + len(data) > len(gci_data):
             raise CompileError("Attempting to write past the end of the GCI", mgc_file, line_number)
+        if patch_mode:
+            log('DEBUG', f"Sending entry to patch table for location 0x{gci_pointer:x}", mgc_file, line_number)
+            patch_table.append((gci_pointer, data))
+            gci_pointer += len(data)
+            return
         write_table = [(gci_pointer, len(data))]
         gci_pointer += len(data)
     else:
@@ -255,13 +268,21 @@ def _process_macro(data, mgcfile, line_number):
 
 
 def _cmd_process_loc(data, mgcfile, line_number):
-    global loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
     gci_pointer_mode = False
+    patch_mode = False
     loc_pointer = data[0]
     return
 def _cmd_process_gci(data, mgcfile, line_number):
-    global loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
     gci_pointer_mode = True
+    patch_mode = False
+    gci_pointer = data[0]
+    return
+def _cmd_process_patch(data, mgcfile, line_number):
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
+    gci_pointer_mode = True
+    patch_mode = True
     gci_pointer = data[0]
     return
 def _cmd_process_add(data, mgcfile, line_number):
@@ -341,6 +362,7 @@ OPCODE_FUNCS = {
 COMMAND_FUNCS = {
     'loc': _cmd_process_loc,
     'gci': _cmd_process_gci,
+    'patch': _cmd_process_patch,
     'add': _cmd_process_add,
     'src': _cmd_process_src,
     'asmsrc': _cmd_process_asmsrc,

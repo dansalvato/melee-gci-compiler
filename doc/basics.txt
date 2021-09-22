@@ -8,22 +8,22 @@ STANDARD OPERATIONS
 -------------------
 
 0123456789ABCDEF
-	All standalone hex is written to Melee memory as-is. Whitespace is ignored,
-	so formats like "0D 15 3A 5E" and "c2380580 00000006" are fine too. It is
-	also not case-sensitive.
+    All standalone hex is written to Melee memory as-is. Whitespace is ignored,
+    so formats like "0D 15 3A 5E" and "c2380580 00000006" are fine too. It is
+    also not case-sensitive.
 %10010110
-	Lines beginning with '%' denote binary instead of hex.
+    Lines beginning with '%' denote binary instead of hex.
 +macro_name 10
-	Runs a macro that was defined using !macro (see Special Commands). Optional
-	count argument specifies how many times to run the macro, eg. 10 (ten) or
-	0x10 (sixteen) times.
+    Runs a macro that was defined using !macro (see Special Commands). Optional
+    count argument specifies how many times to run the macro, eg. 10 (ten) or
+    0x10 (sixteen) times.
 [alias_name]
-	Gets replaced by the data specified using !define (see Special Commands).
+    Gets replaced by the data specified using !define (see Special Commands).
 # Comment
-	Anything after '#' on a line is a comment and ignored by the compiler.
+    Anything after '#' on a line is a comment and ignored by the compiler.
 /* ... */
-	Multi-line comment. Anything between the comment tags is ignored by the
-	compiler.
+    Multi-line comment. Anything between the comment tags is ignored by the
+    compiler.
 
 
 SPECIAL COMMANDS
@@ -32,55 +32,62 @@ Commands give the compiler special information or allow you to load data in
 unique ways.
 
 !loc 8045f000
-	Denotes where to inject any following data in Melee memory, until the next
-	location is specified.
+    Denotes where to inject any following data in Melee memory, until the next
+    location is specified.
     Lower bound: 8045bf28
     Upper bound: 8046b0f0
 !gci 4f50
-	Advanced usage only - lets you specify a GCI offset location rather than a
-	Melee memory location to inject data to. You'll almost always want to use
-	!loc to specify where in Melee memory you want the data to go, rather than
-	worry about where it goes in the GCI.
+    Advanced usage only - lets you specify a GCI offset location rather than a
+    Melee memory location to inject data to. You'll almost always want to use
+    !loc to specify where in Melee memory you want the data to go, rather than
+    worry about where it goes in the GCI.
+!patch 4f50
+    Advanced usage only - like !gci, but writing data while in patch mode defers
+    that data from being written until the very end of compilation, right before
+    the GCI is packed. If !blockorder is used, block reordering happens before
+    this as well. Using !loc or !gci after !patch will disable patch mode for
+    following data writes.
 !add 1a0
-	Adds a relative amount to the loc pointer.
+    Adds a relative amount to the loc pointer.
 !src "path/to/source"
-	Adds the given MGC script file to the build script at that location.
+    Adds the given MGC script file to the build script at that location.
 !asmsrc "path/to/source"
-	Compiles and adds the ASM source file to the current location.
+    Compiles and adds the ASM source file to the current location.
 !file "path/to/file"
-	Adds the entire binary file directly to Melee memory.
+    Adds the entire binary file directly to Melee memory.
 !geckocodelist "path/to/codelist"
-	Compiles the Gecko codelist text file, then adds the resulting binary to
-	Melee memory. Gecko codelists have their own format that is not covered
-	here. This command is for convenience purposes only for those using Gecko
-	codelist files, but adding your Gecko codes directly into the build script
-	will work equally well, because they're just hex anyway. If not using
-	!geckocodelist, make sure your Gecko codeset begins with "00d0c0de 00d0c0de"
-	and ends with "f0000000 00000000".
+    Compiles the Gecko codelist text file, then adds the resulting binary to
+    Melee memory. Gecko codelists have their own format that is not covered
+    here. This command is for convenience purposes only for those using Gecko
+    codelist files, but adding your Gecko codes directly into the build script
+    will work equally well, because they're just hex anyway. If not using
+    !geckocodelist, make sure your Gecko codeset begins with "00d0c0de 00d0c0de"
+    and ends with "f0000000 00000000".
 !string "This is a text string"
-	Adds a raw ASCII text string to Melee memory.
+    Adds a raw ASCII text string to Melee memory. Escape characters are honored,
+    so using \n in a text string will appropriately write 0xa into memory.
 !asm ... !asmend
-	Compiles the PPC ASM and adds the resulting binary to Melee memory.
+    Compiles the PPC ASM and adds the resulting binary to Melee memory.
 !c2 80380580 ... !c2end
-	Compiles the PPC ASM and wraps it in a Gecko C2 code, then adds the
-	resulting binary to Melee memory.
+    Compiles the PPC ASM and wraps it in a Gecko C2 code, then adds the
+    resulting binary to Melee memory.
 !begin
-	Optionally denotes where in the current file the build script begins.
-	Anything before this line is ignored by the compiler. If not specified, the
-	build script begins on the first line of the file.
+    Optionally denotes where in the current file the build script begins.
+    Anything before this line is ignored by the compiler. If not specified, the
+    build script begins on the first line of the file.
 !end
-	Optionally denotes where in the current file the build script ends. Anything
-	after this line is ignored by the compiler. If not specified, the build
-	script ends on the last line of the file.
+    Optionally denotes where in the current file the build script ends. Anything
+    after this line is ignored by the compiler. If not specified, the build
+    script ends on the last line of the file.
 !echo "message"
-	Prints a message to the console during compilation.
+    Prints a message to the console during compilation.
 !macro macro_name ... !macroend
-	Defines a macro of script lines that can be applied anywhere.
+    Defines a macro of script lines that can be applied anywhere.
 !define alias_name ...
-	Defines an alias. Lets you use [alias_name] in your script and it will be
-	replaced with the contents of the alias before the script line is even
-	processed. For example, "!define codeset_loc 80465000" will later let you
-	write "!loc [codeset_loc]" and it will be parsed as "!loc 80465000".
+    Defines an alias. Lets you use [alias_name] in your script and it will be
+    replaced with the contents of the alias before the script line is even
+    processed. For example, "!define codeset_loc 80465000" will later let you
+    write "!loc [codeset_loc]" and it will be parsed as "!loc 80465000".
 !blockorder 0 1 2...
     Changes the order in which blocks are written to the GCI file. When Melee
     writes save data, the blocks can be written out of order, and sometimes the

@@ -18,6 +18,7 @@ COMMANDS = {
     # 'str': A string wrapped in quotes, eg. for file names
     'loc': ['hex'],
     'gci': ['hex'],
+    'patch': ['hex'],
     'add': ['hex'],
     'src': ['str'],
     'asmsrc': ['str'],
