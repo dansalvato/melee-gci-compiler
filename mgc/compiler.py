@@ -285,7 +285,7 @@ def _cmd_process_geckocodelist(data, mgcfile, line_number):
     _write_data(geckocodelist_files[file].filedata, mgcfile, line_number)
     return
 def _cmd_process_string(data, mgcfile, line_number):
-    _write_data(bytearray(data[0], encoding='ascii'), mgcfile, line_number)
+    _write_data(bytearray(bytes(data[0], 'utf-8').decode("unicode_escape"), encoding='ascii'), mgcfile, line_number)
     return
 def _cmd_process_asm(data, mgcfile, line_number):
     asm_block_num = int(data[0])
