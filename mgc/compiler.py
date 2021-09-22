@@ -34,9 +34,12 @@ mgc_stack = []
 # more than once
 write_history = []
 
+# If !blockorder is used, the new block order goes here
+block_order = []
+
 def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
-    global write_history, gci_data
+    global write_history, gci_data, block_order
     logger.silent_log = silent
     logger.debug_log = debug
     # Set root directory
@@ -62,7 +65,6 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         if len(gci_data) != 0x16040:
             raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     else:
-        # Compile init_gci.mgc which writes the data found in a clean save file
         # Silently load and compile init_gci.mgc which loads all default Melee
         # save data
         log('INFO', "Initializing new GCI")
@@ -82,6 +84,9 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         input_gci.raw_bytes = gci_data
     else:
         input_gci = melee_gamedata(raw_bytes=gci_data)
+    if block_order:
+        input_gci.block_order = block_order
+        input_gci.reorder_blocks()
     input_gci.recompute_checksums()
     if not nopack:
         log('INFO', "Packing GCI")
@@ -314,6 +319,13 @@ def _cmd_process_end(data, mgcfile, line_number):
 def _cmd_process_echo(data, mgcfile, line_number):
     log('INFO', data[0])
     return
+def _cmd_process_blockorder(data, mgcfile, line_number):
+    global block_order
+    for arg in data:
+        if arg < 0: raise CompileError("Block number cannot be negative", mgcfile, line_number)
+        elif arg > 9: raise CompileError("Block number cannot be greater than 9", mgcfile, line_number)
+    block_order = data
+    return
 
 
 
@@ -345,4 +357,5 @@ COMMAND_FUNCS = {
     'begin': _cmd_process_begin,
     'end': _cmd_process_end,
     'echo': _cmd_process_echo,
+    'blockorder': _cmd_process_blockorder,
 }

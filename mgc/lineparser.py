@@ -33,7 +33,9 @@ COMMANDS = {
     'echo': ['str'],
     'macro': ['var'],
     'macroend': [],
-    'define': ['var', 'var']
+    'define': ['var', 'var'],
+    'blockorder': ['int', 'int', 'int', 'int', 'int',
+                   'int', 'int', 'int', 'int', 'int']
     }
 
 aliases = {}
@@ -179,6 +181,10 @@ def _parse_command(command):
                 except ValueError:
                     return [Operation('ERROR', f"Command argument {index+1} must be a hex value")]
             elif expected_type == 'var':
+                typed_args.append(arg)
+            elif expected_type == 'int':
+                if arg[:2] == '0x': arg = int(arg, 16)
+                else: arg = int(arg)
                 typed_args.append(arg)
             else:
                 raise ValueError("Unsupported command argument type")

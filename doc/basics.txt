@@ -81,3 +81,10 @@ unique ways.
 	replaced with the contents of the alias before the script line is even
 	processed. For example, "!define codeset_loc 80465000" will later let you
 	write "!loc [codeset_loc]" and it will be parsed as "!loc 80465000".
+!blockorder 0 1 2...
+    Changes the order in which blocks are written to the GCI file. When Melee
+    writes save data, the blocks can be written out of order, and sometimes the
+    same block is written twice. This command lets you replicate that behavior,
+    although it shouldn't affect the way Melee loads the data. You must specify
+    10 total block numbers (from 0 to 9, inclusive), and those blocks will be
+    written to the GCI in that order.
