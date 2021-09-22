@@ -34,6 +34,8 @@ unique ways.
 !loc 8045f000
 	Denotes where to inject any following data in Melee memory, until the next
 	location is specified.
+    Lower bound: 8045bf28
+    Upper bound: 8046b0f0
 !gci 4f50
 	Advanced usage only - lets you specify a GCI offset location rather than a
 	Melee memory location to inject data to. You'll almost always want to use
