@@ -46,11 +46,9 @@ def setup():
     eabi['objcopy'] = platform_folder/("powerpc-eabi-objcopy" + file_extension)
 
 def asm_opcodes(tmpdir, txtfile=None, binfile=None):
-    if platform.system().lower() not in ("darwin", "linux", "win32"):
-        raise UnsupportedOSError("'" + platform.system() + "' os is not supported")
     for i in ("as", "ld", "objcopy"):
         if not eabi[i].exists():
-            raise IOError(eabi[i].name + " not found")
+            raise IOError(str(eabi[i]) + " not found")
 
     if txtfile is None:
         txtfile = tmpdir.joinpath("code.txt")
