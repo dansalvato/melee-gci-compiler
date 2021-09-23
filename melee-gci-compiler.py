@@ -3,6 +3,7 @@
    MGC script files"""
 
 import sys, getopt
+import hashlib
 from pathlib import Path
 from mgc import compiler
 import mgc.logger as logger
@@ -79,6 +80,8 @@ def main(argv):
         except Exception as e:
             if debug: raise
             else: log('ERROR', f"Couldn't write GCI file: {e}")
+    md5 = hashlib.md5(gci_data).hexdigest()
+    log('INFO', f"MD5: {md5}")
     log('INFO', "Successfully finished all tasks")
     _cleanup(script_path)
     sys.exit()
