@@ -63,6 +63,10 @@ unique ways.
     will work equally well, because they're just hex anyway. If not using
     !geckocodelist, make sure your Gecko codeset begins with "00d0c0de 00d0c0de"
     and ends with "f0000000 00000000".
+!fill 0x120 ff
+    Fills the pattern in the second argument the number of times in the first
+    argument. The pattern can be hex (eg. ff) or binary (eg. %11111111). It can
+    be any number of bytes long.
 !string "This is a text string"
     Adds a raw ASCII text string to Melee memory. Escape characters are honored,
     so using \n in a text string will appropriately write 0xa into memory.

@@ -308,6 +308,27 @@ def _cmd_process_geckocodelist(data, mgcfile, line_number):
 def _cmd_process_string(data, mgcfile, line_number):
     _write_data(bytearray(bytes(data[0], 'utf-8').decode("unicode_escape"), encoding='ascii'), mgcfile, line_number)
     return
+def _cmd_process_fill(data, mgcfile, line_number):
+    # TODO: This line format check should happen in lineparser.py
+    if data[1][0] == '%':
+        if len(data[1][0] == 1): log('ERROR', "Syntax error")
+        data[1] = data[1][1:]
+        try:
+            int(data[1], 2)
+            padding = len(data[1]) % 8
+            if padding > 0:
+                log('WARNING', "Fill data is not byte-aligned; may produce undesirable results")
+            _process_bin(data[1] * data[0], mgcfile, line_number)
+        except ValueError:
+            log('ERROR', "Syntax error")
+        try:
+            int(data[1], 16)
+            if data[1] % 2 != 0:
+                log('WARNING', "Fill data is not byte-aligned; may produce undesirable results")
+            _process_hex(data[1] * data[0], mgcfile, line_number)
+        except ValueError:
+            log('ERROR', "Syntax error")
+    _process_hex(data[1] * data[0], mgcfile, line_number)
 def _cmd_process_asm(data, mgcfile, line_number):
     asm_block_num = int(data[0])
     _process_hex(mgcfile.asm_blocks[asm_block_num], mgcfile, line_number)
@@ -369,6 +390,7 @@ COMMAND_FUNCS = {
     'file': _cmd_process_file,
     'geckocodelist': _cmd_process_geckocodelist,
     'string': _cmd_process_string,
+    'fill': _cmd_process_fill,
     'asm': _cmd_process_asm,
     'asmend': _cmd_process_asmend,
     'c2': _cmd_process_c2,

@@ -25,6 +25,7 @@ COMMANDS = {
     'file': ['str'],
     'geckocodelist': ['str'],
     'string': ['str'],
+    'fill': ['int', 'var'],
     'asm': [],
     'asmend': [],
     'c2': ['hex'],
