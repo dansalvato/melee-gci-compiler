@@ -242,6 +242,8 @@ def _check_write_history(write_table, mgc_file, line_number):
 
 def _process_bin(data, mgcfile, line_number):
     data_hex = format(int(data, 2), 'x')
+    if len(data_hex) % 2 > 0:
+        data_hex = '0' + data_hex
     _process_hex(data_hex, mgcfile, line_number)
     return
 def _process_hex(data, mgcfile, line_number):
