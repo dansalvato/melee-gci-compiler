@@ -91,10 +91,10 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
     if block_order:
         input_gci.block_order = block_order
         input_gci.reorder_blocks()
-    input_gci.recompute_checksums()
     # Done with everything except packing, write the patch table
     for address, data in patch_table:
         input_gci.raw_bytes[address:address+len(data)] = data
+    input_gci.recompute_checksums()
     if not nopack:
         log('INFO', "Packing GCI")
         input_gci.pack()
