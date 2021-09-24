@@ -30,6 +30,9 @@ class melee_gci(object):
         # a file - this should help us tell the user not to do something that
         # might end up corrupting their data (or something to that effect).
         self.packed = packed
+        # Some Melee save files have a different block order, so the user can
+        # change this if desired.
+        self.block_order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     ''' These functions return other types '''
 
@@ -128,7 +131,7 @@ class melee_gamedata(melee_gci):
             self.raw_bytes[target_offset:target_offset + 0x10] = new_checksum
         else:
             raise Exception("Can't set checksum bytes for block {}".format(blknum))
-            
+
 
     def checksum_block(self, blknum):
         """ Given some block number 0-10, compute the checksum for the
@@ -140,13 +143,13 @@ class melee_gamedata(melee_gci):
             return self._checksum(target_offset, data_size)
         else:
             raise Exception("Can't compute checksum bytes for block {}".format(blknum))
-            
+
 
     def recompute_checksums(self):
         """ Recompute all checksum values and write them back """
         if (self.packed is True):
             raise Exception("You can only recompute checksums on unpacked data")
-            
+
 
         # Retrieve checksum values for all blocks
         current = []
@@ -180,11 +183,19 @@ class melee_gamedata(melee_gci):
         base = 0x2000 * blknum + 0x2060
         self.raw_bytes[base:(base + 0x1fe0)] = data
 
+    def reorder_blocks(self):
+        ''' Reorder the blocks according to block_order '''
+        new_bytes = bytearray(len(self.raw_bytes))
+        for index, blknum in enumerate(self.block_order):
+            base = 0x2000 * blknum + 0x2040
+            newbase = 0x2000 * index + 0x2040
+            new_bytes[newbase:(newbase + 0x2000)] = self.raw_bytes[base:(base + 0x2000)]
+        self.raw_bytes[0x2040:] = new_bytes[0x2040:]
     def unpack(self):
         """ Unpack all blocks of data """
         if (self.packed is False):
             raise Exception("Data is already unpacked - refusing to unpack")
-            
+
         log('DEBUG', "Unpacking GCI data")
 
         PREV_BYTE_OFFSET = 0x204f
@@ -206,160 +217,8 @@ class melee_gamedata(melee_gci):
         """ Pack all blocks of data """
         if (self.packed is True):
             raise Exception("Data is already packed -- refusing to pack")
-            
+
         log('DEBUG', "Packing GCI data")
-
-        PREV_BYTE_OFFSET = 0x204f
-        BASE_OFFSET = 0x2050
-        DATA_SIZE = 0x1ff0
-        for _ in range(0, self.blocksize()-1):
-            prev = self.raw_bytes[PREV_BYTE_OFFSET]
-            for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
-                cursor = self.raw_bytes[i]
-                res = pack(prev, cursor)
-                self.raw_bytes[i] = res
-                prev = res
-            PREV_BYTE_OFFSET += 0x2000
-            BASE_OFFSET += 0x2000
-        if (self.packed is False):
-            self.packed = True
-
-
-class melee_snapshot(melee_gci):
-    """ Class representing a snapshot file. """
-    def get_raw_region_0_checksum(self):
-        return self.raw_bytes[0x1e80:0x1e90]
-    def get_raw_header_checksum(self):
-        return self.raw_bytes[0x1eb0:0x1ec0]
-    def get_raw_checksum(self, blknum):
-        """ Return checksum bytes for some block 0-10 """
-        base_offset = 0x2040
-        if (blknum >= 0) and (blknum <= (self.blocksize()-1)):
-            target_offset = base_offset + (blknum * 0x2000)
-            return self.raw_bytes[target_offset:target_offset + 0x10]
-        else:
-            return None
-
-    def set_raw_region_0_checksum(self, new_checksum):
-        self.raw_bytes[0x1e80:0x1e90] = new_checksum
-    def set_raw_header_checksum(self, new_checksum):
-        self.raw_bytes[0x1eb0:0x1ec0] = new_checksum
-    def set_raw_checksum(self, blknum, new_checksum):
-        """ Given some blknum 0-10 and a 0x10-byte bytearray, replace the
-            specified checksum bytes with the new bytes """
-        base_offset = 0x2040
-        if (blknum >= 0) and (blknum <= (self.blocksize() -1)):
-            target_offset = base_offset + (blknum * 0x2000)
-            self.raw_bytes[target_offset:target_offset + 0x10] = new_checksum
-        else:
-            raise Exception("Can't set checksum bytes for block {}".format(blknum))
-            
-
-    def checksum_region_0(self):
-        """ Compute the header checksum """
-        base_offset = 0x40
-        data_size = 0x1e40
-        return self._checksum(base_offset, data_size)
-    def checksum_header(self):
-        """ Compute the header checksum """
-        base_offset = 0x1ec0
-        data_size = 0x180
-        return self._checksum(base_offset, data_size)
-    def checksum_block(self, blknum):
-        """ Given some block number 0-10, compute the checksum for the
-            associated data. Returns the raw checksum bytes. """
-        base_offset = 0x2050
-        data_size = 0x1ff0
-        if (blknum >= 0) and (blknum <= (self.blocksize() - 1)):
-            target_offset = base_offset + (blknum * 0x2000)
-            return self._checksum(target_offset, data_size)
-        else:
-            raise Exception("Can't compute checksum bytes for block {}".format(blknum))
-            
-
-    def recompute_checksums(self):
-        """ Recompute all checksum values and write them back """
-        if (self.packed is True):
-            raise Exception("You can only recompute checksums on unpacked data")
-            
-
-        if (self.get_raw_header_checksum() != self.checksum_header()):
-            log('DEBUG', "Header checksum mismatch, fixing ..")
-            self.set_raw_header_checksum(self.checksum_header())
-        else:
-            log('DEBUG', "Header checksum unchanged")
-
-        # Retrieve checksum values for all blocks
-        current = []
-        for i in range(0, self.blocksize()-1):
-            current.append(self.get_raw_checksum(i))
-
-        # Compute checksum values for all blocks
-        computed = []
-        for i in range(0, self.blocksize()-1):
-            computed.append(self.checksum_block(i))
-
-        # If current checksums don't match, write them back
-        for i in range(0, self.blocksize()-1):
-            if (current[i] != computed[i]):
-                log('DEBUG', "Block {} checksum mismatch, fixing ..".format(i))
-                self.set_raw_checksum(i, computed[i])
-            else:
-                log('DEBUG', "Block {} checksum unchanged".format(i))
-
-
-    def unpack(self):
-        """ Unpack all data """
-        if (self.packed is False):
-            raise Exception("Data is already unpacked - refusing to unpack")
-            
-        log('DEBUG', "Unpacking GCI data")
-
-        # Unpack the data header region
-        PREV_BYTE_OFFSET = 0x1ebf
-        BASE_OFFSET = 0x1ec0
-        DATA_SIZE = 0x180
-        prev = self.raw_bytes[PREV_BYTE_OFFSET]
-        for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
-            cursor = self.raw_bytes[i]
-            res = unpack(prev, cursor)
-            self.raw_bytes[i] = res
-            prev = cursor
-
-        PREV_BYTE_OFFSET = 0x204f
-        BASE_OFFSET = 0x2050
-        DATA_SIZE = 0x1ff0
-        for _ in range(0, self.blocksize() - 1):
-            prev = self.raw_bytes[PREV_BYTE_OFFSET]
-            for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
-                cursor = self.raw_bytes[i]
-                res = unpack(prev, cursor)
-                self.raw_bytes[i] = res
-                prev = cursor
-            PREV_BYTE_OFFSET += 0x2000
-            BASE_OFFSET += 0x2000
-
-        if (self.packed is True):
-            self.packed = False
-
-
-    def pack(self):
-        """ Pack all blocks of data """
-        if (self.packed is True):
-            raise Exception("Data is already packed -- refusing to pack")
-            
-        log('DEBUG', "Packing GCI data")
-
-        # Pack the data header region
-        PREV_BYTE_OFFSET = 0x1ebf
-        BASE_OFFSET = 0x1ec0
-        DATA_SIZE = 0x180
-        prev = self.raw_bytes[PREV_BYTE_OFFSET]
-        for i in range(BASE_OFFSET, BASE_OFFSET + DATA_SIZE):
-            cursor = self.raw_bytes[i]
-            res = pack(prev, cursor)
-            self.raw_bytes[i] = res
-            prev = res
 
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050

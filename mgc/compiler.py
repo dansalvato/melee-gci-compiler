@@ -19,6 +19,7 @@ gci_data = bytearray(0x16040)
 loc_pointer = 0
 gci_pointer = 0
 gci_pointer_mode = False
+patch_mode = False
 
 # A dict that contains all loaded MGC filedata, accessible by filename.
 # We load all MGC files from disk ahead of time and use this dict to send
@@ -34,9 +35,15 @@ mgc_stack = []
 # more than once
 write_history = []
 
+# If !blockorder is used, the new block order goes here
+block_order = []
+
+# A list of (address, bytearray) tuples for writing !patch data at the end
+patch_table = []
+
 def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=False):
     """Main compile routine: Takes a root MGC file path and compiles all data"""
-    global write_history, gci_data
+    global write_history, gci_data, block_order
     logger.silent_log = silent
     logger.debug_log = debug
     # Set root directory
@@ -62,7 +69,6 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         if len(gci_data) != 0x16040:
             raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     else:
-        # Compile init_gci.mgc which writes the data found in a clean save file
         # Silently load and compile init_gci.mgc which loads all default Melee
         # save data
         log('INFO', "Initializing new GCI")
@@ -82,6 +88,12 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
         input_gci.raw_bytes = gci_data
     else:
         input_gci = melee_gamedata(raw_bytes=gci_data)
+    if block_order:
+        input_gci.block_order = block_order
+        input_gci.reorder_blocks()
+    # Done with everything except packing, write the patch table
+    for address, data in patch_table:
+        input_gci.raw_bytes[address:address+len(data)] = data
     input_gci.recompute_checksums()
     if not nopack:
         log('INFO', "Packing GCI")
@@ -179,13 +191,19 @@ def _load_all_mgc_files(root_filepath):
 
 def _write_data(data, mgc_file, line_number):
     """Writes a byte array to the GCI"""
-    global gci_data, loc_pointer, gci_pointer, gci_pointer_mode, write_history
+    global gci_data, loc_pointer, gci_pointer, write_history, block_order, patch_table
     if gci_pointer_mode:
         if gci_pointer < 0:
             raise CompileError("Data pointer must be a positive value", mgc_file, line_number)
-        log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
+        if not patch_mode:
+            log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", mgc_file, line_number)
         if gci_pointer + len(data) > len(gci_data):
             raise CompileError("Attempting to write past the end of the GCI", mgc_file, line_number)
+        if patch_mode:
+            log('DEBUG', f"Sending entry to patch table for location 0x{gci_pointer:x}", mgc_file, line_number)
+            patch_table.append((gci_pointer, data))
+            gci_pointer += len(data)
+            return
         write_table = [(gci_pointer, len(data))]
         gci_pointer += len(data)
     else:
@@ -224,6 +242,8 @@ def _check_write_history(write_table, mgc_file, line_number):
 
 def _process_bin(data, mgcfile, line_number):
     data_hex = format(int(data, 2), 'x')
+    if len(data_hex) % 2 > 0:
+        data_hex = '0' + data_hex
     _process_hex(data_hex, mgcfile, line_number)
     return
 def _process_hex(data, mgcfile, line_number):
@@ -238,26 +258,33 @@ def _process_warning(data, mgcfile, line_number):
     return
 def _process_error(data, mgcfile, line_number):
     raise CompileError(data, mgcfile, line_number)
-    return
 def _process_macro(data, mgcfile, line_number):
     macro_name = data.name
     macro_count = data.count
     if not macro_name in mgc_file.macros:
         raise CompileError(f"Undefined macro: {macro_name}, mgcfile, line_number")
     op_list = mgc_file.macros[macro_name]
-    for count in range(macro_count):
+    for _ in range(macro_count):
         for op in op_list:
             OPCODE_FUNCS[op.codetype](op.data, mgcfile, line_number)
 
 
 def _cmd_process_loc(data, mgcfile, line_number):
-    global loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
     gci_pointer_mode = False
+    patch_mode = False
     loc_pointer = data[0]
     return
 def _cmd_process_gci(data, mgcfile, line_number):
-    global loc_pointer, gci_pointer, gci_pointer_mode
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
     gci_pointer_mode = True
+    patch_mode = False
+    gci_pointer = data[0]
+    return
+def _cmd_process_patch(data, mgcfile, line_number):
+    global loc_pointer, gci_pointer, gci_pointer_mode, patch_mode
+    gci_pointer_mode = True
+    patch_mode = True
     gci_pointer = data[0]
     return
 def _cmd_process_add(data, mgcfile, line_number):
@@ -281,7 +308,10 @@ def _cmd_process_geckocodelist(data, mgcfile, line_number):
     _write_data(geckocodelist_files[file].filedata, mgcfile, line_number)
     return
 def _cmd_process_string(data, mgcfile, line_number):
-    _write_data(bytearray(data[0], encoding='ascii'), mgcfile, line_number)
+    _write_data(bytearray(bytes(data[0], 'utf-8').decode("unicode_escape"), encoding='ascii'), mgcfile, line_number)
+    return
+def _cmd_process_fill(data, mgcfile, line_number):
+    _process_hex(data[1] * data[0], mgcfile, line_number)
     return
 def _cmd_process_asm(data, mgcfile, line_number):
     asm_block_num = int(data[0])
@@ -315,6 +345,13 @@ def _cmd_process_end(data, mgcfile, line_number):
 def _cmd_process_echo(data, mgcfile, line_number):
     log('INFO', data[0])
     return
+def _cmd_process_blockorder(data, mgcfile, line_number):
+    global block_order
+    for arg in data:
+        if arg < 0: raise CompileError("Block number cannot be negative", mgcfile, line_number)
+        elif arg > 9: raise CompileError("Block number cannot be greater than 9", mgcfile, line_number)
+    block_order = data
+    return
 
 
 
@@ -330,12 +367,14 @@ OPCODE_FUNCS = {
 COMMAND_FUNCS = {
     'loc': _cmd_process_loc,
     'gci': _cmd_process_gci,
+    'patch': _cmd_process_patch,
     'add': _cmd_process_add,
     'src': _cmd_process_src,
     'asmsrc': _cmd_process_asmsrc,
     'file': _cmd_process_file,
     'geckocodelist': _cmd_process_geckocodelist,
     'string': _cmd_process_string,
+    'fill': _cmd_process_fill,
     'asm': _cmd_process_asm,
     'asmend': _cmd_process_asmend,
     'c2': _cmd_process_c2,
@@ -346,4 +385,5 @@ COMMAND_FUNCS = {
     'begin': _cmd_process_begin,
     'end': _cmd_process_end,
     'echo': _cmd_process_echo,
+    'blockorder': _cmd_process_blockorder,
 }

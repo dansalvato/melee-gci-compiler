@@ -3,6 +3,7 @@
    MGC script files"""
 
 import sys, getopt
+import hashlib
 from pathlib import Path
 from mgc import compiler
 import mgc.logger as logger
@@ -19,6 +20,8 @@ script_path    The path to the MGC script file you want to compile.
 --nopack       Do not pack the GCI, so you can inspect the outputted data.
 --silent       Suppress command line output, except for fatal errors.
 --debug        Output extra information while compiling and on errors.
+
+You can omit script_path to pack or unpack a GCI without changing its content.
 """
 
 
@@ -77,6 +80,8 @@ def main(argv):
         except Exception as e:
             if debug: raise
             else: log('ERROR', f"Couldn't write GCI file: {e}")
+    md5 = hashlib.md5(gci_data).hexdigest()
+    log('INFO', f"MD5: {md5}")
     log('INFO', "Successfully finished all tasks")
     _cleanup(script_path)
     sys.exit()
