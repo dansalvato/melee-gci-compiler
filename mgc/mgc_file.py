@@ -162,36 +162,29 @@ class MGCFile(File):
         """Takes the preprocessed MGC file data and compiles the ASM using
            pyiiasmh"""
         asm_blocks = []
+        asm_buffer = ''
+        mid_asm = ''
+        c2_address = None
+        asm_open_line = 0
         for line_number, line in enumerate(filedata):
-            op_list = parse_opcodes(line)
-            for operation in op_list:
-                if operation.codetype != 'COMMAND': continue
-                if operation.data.name == 'asm' or operation.data.name == 'c2':
-                    # Send ASM to buffer until asmend/c2end command is reached
-                    asm_ended = False
-                    asm_buffer = ''
-                    for asm_line_number, asm_line in enumerate(filedata[line_number+1:]):
-                        asm_op_list = parse_opcodes(asm_line)
-                        asm_operation = None
-                        if asm_op_list: asm_operation = asm_op_list[0]
-                        if asm_operation:
-                            if asm_operation.codetype == 'COMMAND':
-                                if (operation.data.name == 'asm' and asm_operation.data.name == 'asmend') or \
-                                   (operation.data.name == 'c2' and asm_operation.data.name == 'c2end'):
-                                   # Compile ASM, store to asm_block
-                                   c2 = False
-                                   c2_address = None
-                                   if operation.data.name == 'c2':
-                                    c2 = True
-                                    c2_address = operation.data.args[0]
-                                   asm_blocks.append(self.compile_asm_block(asm_buffer, line_number, c2, c2_address))
-                                   # Wipe end tag, no longer needed
-                                   filedata[line_number+asm_line_number+1] = ''
-                                   asm_ended = True
-                                   break
-                        asm_buffer += asm_line + '\n'
-                        filedata[line_number+asm_line_number+1] = ''
-                    if not asm_ended: raise CompileError(f"!{operation.data.name} Command does not have an end specified", self, line_number)
+            if mid_asm:
+                prev_asm_buffer = asm_buffer
+                asm_buffer += line + '\n'
+                filedata[line_number] = ''
+                if not (operation := parse_opcodes(line)): continue
+                if (operation := operation[0]).codetype != 'COMMAND': continue
+                if not (mid_asm == 'asm' and operation.data.name == 'asmend') and \
+                   not (mid_asm == 'c2' and operation.data.name == 'c2end'): continue
+                asm_blocks.append(self.compile_asm_block(prev_asm_buffer, line_number, mid_asm == 'c2', c2_address))
+                mid_asm = asm_buffer = ''
+            else:
+                if not (operation := parse_opcodes(line)): continue
+                if (operation := operation[0]).codetype != 'COMMAND': continue
+                if operation.data.name != 'asm' and operation.data.name != 'c2': continue
+                mid_asm = operation.data.name
+                asm_open_line = line_number
+                c2_address = operation.data.args[0] if mid_asm == 'c2' else None
+        if mid_asm: raise CompileError(f"ASM Command does not have an end specified", self, asm_open_line)
         return filedata, asm_blocks
 
     def __preprocess_macros(self, filedata):
