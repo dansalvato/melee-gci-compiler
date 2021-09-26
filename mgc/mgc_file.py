@@ -83,13 +83,14 @@ class MGCFile(File):
     """An MGC script file"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
-        self.filedata = self.__preprocess(filedata)
-        self.filedata, self.asm_blocks = self.__preprocess_asm(filedata)
-        self.filedata = self.__preprocess_macros(filedata)
+        filedata = self.__preprocess(filedata)
+        filedata = self.__preprocess_begin_end(filedata)
+        filedata, self.asm_blocks = self.__preprocess_asm(filedata)
+        filedata = self.__preprocess_macros(filedata)
         self.mgc_lines = []
 
         asm_block_number = 0
-        for line_number, line in enumerate(self.filedata):
+        for line_number, line in enumerate(filedata):
             op_list = parse_opcodes(line)
             if op_list:
                 for index, operation in enumerate(op_list):
@@ -115,8 +116,6 @@ class MGCFile(File):
         """Takes MGC file data loaded from disk and strips everything the compiler
            should ignore, such as comments"""
         multiline_comment = False
-        begin_line = -1
-        end_line = -1
         for line_number, line in enumerate(filedata):
             if multiline_comment:
                 # If there's no comment ender, wipe the whole line and move on
@@ -139,23 +138,7 @@ class MGCFile(File):
             line = line.strip()
             # Consolidate multiple spaces into one space, unless in quotes
             line = re.sub(r'\s+(?=([^"]*"[^"]*")*[^"]*$)', ' ', line)
-
-            # Look for !begin and !end
-            op_list = parse_opcodes(line)
-            for operation in op_list:
-                if operation.codetype != 'COMMAND': continue
-                if operation.data.name == 'begin' and begin_line < 0: begin_line = line_number
-                elif operation.data.name == 'end' and end_line < 0: end_line = line_number
-
             filedata[line_number] = line
-
-        # Wipe everything before !begin and after !end
-        if begin_line >= 0 and end_line >= 0:
-            if end_line <= begin_line: raise CompileError("!end Command appears before !begin Command", self, end_line)
-        if begin_line >= 0:
-            for i in range(begin_line+1): filedata[i] = '' # !begin gets wiped too
-        if end_line >= 0:
-            for i in range(end_line, len(filedata)): filedata[i] = '' # !end gets wiped too
         return filedata
 
     def __preprocess_asm(self, filedata):
