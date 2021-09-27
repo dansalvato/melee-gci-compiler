@@ -223,9 +223,11 @@ class MGCFile(File):
                 new_op_lines.append(line)
             else:
                 for op in line.op_list:
-                    if op.codetype != 'COMMAND': continue
                     if op.codetype == 'MACRO':
-                        raise CompileError("Macros cannot contain other macros", self, line.line_number)
+                        raise CompileError("Macros cannot call other macros", self, line.line_number)
+                    if op.codetype != 'COMMAND': continue
+                    if op.data.name == 'macro':
+                        raise CompileError("Macros cannot define other macros", self, line.line_number)
                     if op.data.name != 'macroend': continue
                     mid_macro = False
                     macros[macro_name] = macro_op_list.copy()
