@@ -318,20 +318,17 @@ def _cmd_process_asm(data, mgcfile, line_number):
     _process_hex(mgcfile.asm_blocks[asm_block_num], mgcfile, line_number)
     return
 def _cmd_process_asmend(data, mgcfile, line_number):
-    log('WARNING', "!asmend is used without a !asm preceding it", mgcfile, line_number)
-    return
+    raise CompileError("!asmend is used without a !asm preceding it", mgcfile, line_number)
 def _cmd_process_c2(data, mgcfile, line_number):
     asm_block_num = int(data[1])
     _process_hex(mgcfile.asm_blocks[asm_block_num], mgcfile, line_number)
     return
 def _cmd_process_c2end(data, mgcfile, line_number):
-    log('WARNING', "!c2end is used without a !c2 preceding it", mgcfile, line_number)
-    return
+    raise CompileError("!c2end is used without a !c2 preceding it", mgcfile, line_number)
 def _cmd_process_macro(data, mgcfile, line_number):
     return
 def _cmd_process_macroend(data, mgcfile, line_number):
-    log('WARNING', "!macroend is used without a !macro preceding it", mgcfile, line_number)
-    return
+    raise CompileError("!macroend is used without a !macro preceding it", mgcfile, line_number)
 def _cmd_process_define(data, mgcfile, line_number):
     # Aliases are added to the dict in MGCFile's init while the script is being
     # parsed into Operations
