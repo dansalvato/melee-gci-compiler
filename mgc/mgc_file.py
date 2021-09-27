@@ -161,25 +161,10 @@ class MGCFile(File):
     def __preprocess(self, filedata):
         """Takes MGC file data loaded from disk and strips everything the compiler
            should ignore, such as comments"""
-        multiline_comment = False
         for line_number, line in enumerate(filedata):
-            if multiline_comment:
-                # If there's no comment ender, wipe the whole line and move on
-                comment_index = line.find('*/')
-                if comment_index < 0:
-                    filedata[line_number] = ''
-                    continue
-                line = line[comment_index+2:]
-            # Trim multi-line comments that start and end on the same line
-            line = re.sub(r'\/\*.*?\*\/', '', line)
             # Trim single-line comments
             comment_index = line.find('#')
             if comment_index >= 0: line = line[:comment_index]
-            # Trim everything after multi-line comment indicator
-            comment_index = line.find('/*')
-            if comment_index >= 0:
-                line = line[:comment_index]
-                multiline_comment = True
             # Trim whitespace
             line = line.strip()
             # Consolidate multiple spaces into one space, unless in quotes

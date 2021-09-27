@@ -21,9 +21,6 @@ STANDARD OPERATIONS
     Gets replaced by the data specified using !define (see Special Commands).
 # Comment
     Anything after '#' on a line is a comment and ignored by the compiler.
-/* ... */
-    Multi-line comment. Anything between the comment tags is ignored by the
-    compiler.
 
 
 SPECIAL COMMANDS
