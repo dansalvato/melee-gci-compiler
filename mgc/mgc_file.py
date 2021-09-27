@@ -85,32 +85,78 @@ class MGCFile(File):
         self.filepath = filepath
         filedata = self.__preprocess(filedata)
         filedata = self.__preprocess_begin_end(filedata)
-        filedata, self.asm_blocks = self.__preprocess_asm(filedata)
-        filedata = self.__preprocess_macros(filedata)
-        self.mgc_lines = []
+        op_lines = self.__preprocess_op_lines(filedata)
+        op_lines = self.__preprocess_asm(filedata, op_lines)
+        op_lines = self.__preprocess_macros(op_lines)
+        self.mgc_lines = op_lines
 
-        asm_block_number = 0
-        for line_number, line in enumerate(filedata):
-            op_list = parse_opcodes(line)
-            if op_list:
-                for index, operation in enumerate(op_list):
-                    if operation.codetype == 'ERROR':
-                        raise CompileError(operation.data, self, line_number)
-                    if operation.codetype != 'COMMAND': continue
-                    if operation.data.name == 'asm' or operation.data.name == 'c2':
-                        op_list[index].data.args.append(asm_block_number)
-                        asm_block_number += 1
-                    elif operation.data.name == 'define':
-                        alias_name = '[' + operation.data.args[0] + ']'
-                        alias_data = operation.data.args[1]
-                        if alias_name in lineparser.aliases:
-                            log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", self, line_number)
-                        lineparser.aliases[alias_name] = alias_data
-                self.mgc_lines.append(MGCLine(line_number, op_list))
-
+        for line in op_lines:
+            line_number = line.line_number
+            for op in line.op_list:
+                if op.codetype == 'ERROR':
+                    raise CompileError(op.data, self, line_number)
+                if op.codetype != 'COMMAND': continue
+                # TODO: This won't work unless in a preprocess step
+                elif op.data.name == 'define':
+                    alias_name = '[' + op.data.args[0] + ']'
+                    alias_data = op.data.args[1]
+                    if alias_name in lineparser.aliases:
+                        log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", self, line_number)
+                    lineparser.aliases[alias_name] = alias_data
 
     def get_lines(self):
         return self.mgc_lines
+
+    def __preprocess_op_lines(self, filedata):
+        op_lines = []
+        open_tag = None
+        open_tag_line = 0
+        for line_number, line in enumerate(filedata):
+            op_list = parse_opcodes(line)
+            if not op_list:
+                continue
+            if open_tag:
+                if self._check_close_tag(op_list, open_tag):
+                    open_tag = None
+                else:
+                    continue
+            else:
+                open_tag = self._check_open_tag(op_list)
+                open_tag_line = line_number
+            op_lines.append(MGCLine(line_number, op_list))
+        if open_tag:
+            raise CompileError(f"Command does not have an end specified",
+                               self, open_tag_line)
+        return op_lines
+
+    def _check_open_tag(self, op_list):
+        OPEN_TAG_NAMES = ['asm', 'c2']
+        for op in op_list:
+            if (op.codetype != 'COMMAND'):
+                continue
+            if op.data.name in OPEN_TAG_NAMES:
+                return op.data.name
+        return None
+
+    def _check_close_tag(self, op_list, open_tag):
+        for op in op_list:
+            if (op.codetype == 'COMMAND' and
+                op.data.name == open_tag + 'end'):
+                return True
+        return False
+
+    def __preprocess_begin_end(self, filedata):
+        for line_number, line in enumerate(filedata):
+            if line == '!begin':
+                for i in range(line_number+1):
+                    filedata[i] = ''
+                break
+        for line_number, line in enumerate(reversed(filedata)):
+            if line == '!end':
+                line_number = len(filedata)-line_number-1
+                filedata = filedata[:line_number]
+                break
+        return filedata
 
     def __preprocess(self, filedata):
         """Takes MGC file data loaded from disk and strips everything the compiler
@@ -141,63 +187,50 @@ class MGCFile(File):
             filedata[line_number] = line
         return filedata
 
-    def __preprocess_asm(self, filedata):
-        """Takes the preprocessed MGC file data and compiles the ASM using
-           pyiiasmh"""
-        asm_blocks = []
-        asm_buffer = ''
-        mid_asm = ''
-        c2_address = None
-        asm_open_line = 0
-        for line_number, line in enumerate(filedata):
-            if mid_asm:
-                prev_asm_buffer = asm_buffer
-                asm_buffer += line + '\n'
-                filedata[line_number] = ''
-                if not (operation := parse_opcodes(line)): continue
-                if (operation := operation[0]).codetype != 'COMMAND': continue
-                if not (mid_asm == 'asm' and operation.data.name == 'asmend') and \
-                   not (mid_asm == 'c2' and operation.data.name == 'c2end'): continue
-                asm_blocks.append(self.compile_asm_block(prev_asm_buffer, line_number, mid_asm == 'c2', c2_address))
-                mid_asm = asm_buffer = ''
-            else:
-                if not (operation := parse_opcodes(line)): continue
-                if (operation := operation[0]).codetype != 'COMMAND': continue
-                if operation.data.name != 'asm' and operation.data.name != 'c2': continue
-                mid_asm = operation.data.name
-                asm_open_line = line_number
-                c2_address = operation.data.args[0] if mid_asm == 'c2' else None
-        if mid_asm: raise CompileError(f"ASM Command does not have an end specified", self, asm_open_line)
-        return filedata, asm_blocks
+    def __preprocess_asm(self, filedata, op_lines):
+        ASM_COMMANDS = ['asm', 'c2']
+        for index, line in enumerate(op_lines):
+            for op in line.op_list:
+                if op.codetype != 'COMMAND': continue
+                if op.data.name not in ASM_COMMANDS: continue
+                c2 = op.data.name == 'c2'
+                c2_addr = op.data.args[0] if c2 else None
+                start_line = line.line_number + 1
+                end_line = op_lines.pop(index+1).line_number
+                asm_data = '\n'.join(filedata[start_line:end_line])
+                asm_block = self.compile_asm_block(asm_data, line.line_number, c2, c2_addr)
+                op_lines[index] = MGCLine(line.line_number, [Operation('HEX', asm_block)])
+        return op_lines
 
-    def __preprocess_macros(self, filedata):
+    def __preprocess_macros(self, op_lines):
         """Looks for macro definitions and adds them to the macros dict"""
-        for line_number, line in enumerate(filedata):
-            op_list = parse_opcodes(line)
-            for operation in op_list:
-                if operation.codetype != 'COMMAND': continue
-                if operation.data.name != 'macro': continue
-                macro_name = operation.data.args[0]
-                if macro_name in macros:
-                    log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", self, line_number)
-                macro_ended = False
-                macro_op_list = []
-                for macro_line_number, macro_line in enumerate(filedata[line_number+1:]):
-                    current_op_list = parse_opcodes(macro_line)
-                    macro_operation = None
-                    if current_op_list: macro_operation = current_op_list[0]
-                    if macro_operation:
-                        if macro_operation.codetype == 'COMMAND':
-                            if macro_operation.data.name == 'macroend':
-                                # Wipe !macroend tag
-                               filedata[line_number+macro_line_number+1] = ''
-                               macro_ended = True
-                               break
-                    macro_op_list += current_op_list
-                    filedata[line_number+macro_line_number+1] = ''
-                if not macro_ended: raise CompileError("Macro does not have an end specified", self, line_number)
-                for macro_operation in macro_op_list:
-                    if macro_operation.codetype == 'MACRO':
-                        raise CompileError("Macros cannot contain other macros", self, line_number)
-                macros[macro_name] = macro_op_list
-        return filedata
+        new_op_lines = []
+        mid_macro = False
+        macro_start_line = 0
+        macro_op_list = []
+        for line in op_lines:
+            if not mid_macro:
+                for op in line.op_list:
+                    if op.codetype != 'COMMAND': continue
+                    if op.data.name != 'macro': continue
+                    macro_name = op.data.args[0]
+                    if macro_name in macros:
+                        log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", self, line.line_number)
+                    mid_macro = True
+                    macro_start_line = line.line_number
+                    macro_op_list.clear()
+                    break
+                new_op_lines.append(line)
+            else:
+                for op in line.op_list:
+                    if op.codetype != 'COMMAND': continue
+                    if op.codetype == 'MACRO':
+                        raise CompileError("Macros cannot contain other macros", self, line.line_number)
+                    if op.data.name != 'macroend': continue
+                    mid_macro = False
+                    macros[macro_name] = macro_op_list.copy()
+                    break
+                macro_op_list += line.op_list
+        if mid_macro:
+            raise CompileError("Macro does not have an end specified", self, macro_start_line)
+        return new_op_lines

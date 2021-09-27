@@ -125,12 +125,12 @@ def _load_mgc_file(filepath):
     except UnicodeDecodeError:
         raise CompileError("Unable to read MGC file; make sure it's a text file")
     # Store file data
-    mgc_files[filepath] = MGCFile(filepath, filedata)
+    newfile = MGCFile(filepath, filedata)
+    mgc_files[filepath] = newfile
     # See if the new file sources any additional files we need to load
     additional_files = []
-    for line in filedata:
-        op_list = parse_opcodes(line)
-        for operation in op_list:
+    for line in newfile.mgc_lines:
+        for operation in line.op_list:
             if operation.codetype != 'COMMAND': continue
             if operation.data.name == 'src':
                 additional_files.append(parent.joinpath(operation.data.args[0]))
