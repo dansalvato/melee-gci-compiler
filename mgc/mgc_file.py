@@ -83,7 +83,6 @@ class MGCFile(File):
     """An MGC script file"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
-        filedata = self.__preprocess(filedata)
         filedata = self.__preprocess_begin_end(filedata)
         op_lines = self.__preprocess_op_lines(filedata)
         op_lines = self.__preprocess_asm(filedata, op_lines)
@@ -156,20 +155,6 @@ class MGCFile(File):
                 line_number = len(filedata)-line_number-1
                 filedata = filedata[:line_number]
                 break
-        return filedata
-
-    def __preprocess(self, filedata):
-        """Takes MGC file data loaded from disk and strips everything the compiler
-           should ignore, such as comments"""
-        for line_number, line in enumerate(filedata):
-            # Trim single-line comments
-            comment_index = line.find('#')
-            if comment_index >= 0: line = line[:comment_index]
-            # Trim whitespace
-            line = line.strip()
-            # Consolidate multiple spaces into one space, unless in quotes
-            line = re.sub(r'\s+(?=([^"]*"[^"]*")*[^"]*$)', ' ', line)
-            filedata[line_number] = line
         return filedata
 
     def __preprocess_asm(self, filedata, op_lines):

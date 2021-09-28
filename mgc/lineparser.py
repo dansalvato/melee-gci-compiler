@@ -1,5 +1,6 @@
 """lineparser.py: Searches text for opcodes and returns appropriate data"""
 import string
+import re
 from collections import namedtuple
 
 CODETYPES = [
@@ -52,9 +53,17 @@ SYNTAX_ERROR = Operation('ERROR', "Invalid syntax")
 def parse_opcodes(script_line):
     """Parses a script line and returns a list of opcodes and data found."""
     op_list = []
-    # If the line is empty, we're done
-    if script_line == '':
+    if not script_line:
         return op_list
+
+    # Trim single-line comments
+    comment_index = script_line.find('#')
+    if comment_index >= 0:
+        script_line = script_line[:comment_index]
+    # Trim whitespace
+    script_line = script_line.strip()
+    # Consolidate multiple spaces into one space, unless in quotes
+    script_line = re.sub(r'\s+(?=([^"]*"[^"]*")*[^"]*$)', ' ', script_line)
 
     # Replace aliases
     aliased_line = script_line
