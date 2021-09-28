@@ -68,8 +68,13 @@ def parse_opcodes(script_line):
     # Replace aliases
     aliased_line = script_line
     for alias in aliases:
-        if alias in script_line: aliased_line = script_line.replace(alias, aliases[alias])
+        if alias in script_line:
+            aliased_line = script_line.replace(alias, aliases[alias])
     script_line = aliased_line
+    if not script_line:
+        return op_list
+    if re.search(r'\[.*\]', script_line):
+        op_list.append(Operation('WARNING', "No matching alias, taking brackets literally"))
 
     # Check if line is hex
     if script_line[0] in string.hexdigits:
