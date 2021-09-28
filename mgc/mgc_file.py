@@ -83,8 +83,8 @@ class MGCFile(File):
     """An MGC script file"""
     def __init__(self, filepath, filedata):
         self.filepath = filepath
-        filedata = self.__preprocess_begin_end(filedata)
-        op_lines = self.__preprocess_op_lines(filedata)
+        start_line, end_line = self.__preprocess_begin_end(filedata)
+        op_lines = self.__preprocess_op_lines(filedata, start_line, end_line)
         op_lines = self.__preprocess_asm(filedata, op_lines)
         op_lines = self.__preprocess_macros(op_lines)
         self.mgc_lines = op_lines
@@ -106,11 +106,11 @@ class MGCFile(File):
     def get_lines(self):
         return self.mgc_lines
 
-    def __preprocess_op_lines(self, filedata):
+    def __preprocess_op_lines(self, filedata, start_line, end_line):
         op_lines = []
         open_tag = None
         open_tag_line = 0
-        for line_number, line in enumerate(filedata):
+        for line_number, line in enumerate(filedata[start_line:end_line], start=start_line):
             op_list = parse_opcodes(line)
             if not op_list:
                 continue
@@ -145,17 +145,17 @@ class MGCFile(File):
         return False
 
     def __preprocess_begin_end(self, filedata):
+        start_line = 0
+        end_line = len(filedata)
         for line_number, line in enumerate(filedata):
-            if line == '!begin':
-                for i in range(line_number+1):
-                    filedata[i] = ''
+            if line.strip() == '!begin':
+                start_line = line_number+1
                 break
         for line_number, line in enumerate(reversed(filedata)):
-            if line == '!end':
-                line_number = len(filedata)-line_number-1
-                filedata = filedata[:line_number]
+            if line.strip() == '!end':
+                end_line = len(filedata)-line_number-1
                 break
-        return filedata
+        return start_line, end_line
 
     def __preprocess_asm(self, filedata, op_lines):
         ASM_COMMANDS = ['asm', 'c2']
