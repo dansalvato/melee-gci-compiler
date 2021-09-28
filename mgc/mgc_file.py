@@ -94,14 +94,6 @@ class MGCFile(File):
             for op in line.op_list:
                 if op.codetype == 'ERROR':
                     raise CompileError(op.data, self, line_number)
-                if op.codetype != 'COMMAND': continue
-                # TODO: This won't work unless in a preprocess step
-                elif op.data.name == 'define':
-                    alias_name = '[' + op.data.args[0] + ']'
-                    alias_data = op.data.args[1]
-                    if alias_name in lineparser.aliases:
-                        log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", self, line_number)
-                    lineparser.aliases[alias_name] = alias_data
 
     def get_lines(self):
         return self.mgc_lines
@@ -114,6 +106,7 @@ class MGCFile(File):
             op_list = parse_opcodes(line)
             if not op_list:
                 continue
+            self._add_defines(op_list, line_number)
             if open_tag:
                 if self._check_close_tag(op_list, open_tag):
                     open_tag = None
@@ -127,6 +120,17 @@ class MGCFile(File):
             raise CompileError(f"Command does not have an end specified",
                                self, open_tag_line)
         return op_lines
+
+    def _add_defines(self, op_list, line_number):
+        for op in op_list:
+            if op.codetype != 'COMMAND': continue
+            if op.data.name != 'define': continue
+            alias_name = '[' + op.data.args[0] + ']'
+            alias_data = op.data.args[1]
+            if alias_name in lineparser.aliases:
+                log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", self, line_number)
+            lineparser.aliases[alias_name] = alias_data
+        return
 
     def _check_open_tag(self, op_list):
         OPEN_TAG_NAMES = ['asm', 'c2']
