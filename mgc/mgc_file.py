@@ -171,7 +171,7 @@ class MGCFile(File):
                 c2_addr = op.data.args[0] if c2 else None
                 start_line = line.line_number + 1
                 end_line = op_lines.pop(index+1).line_number
-                asm_data = '\n'.join(filedata[start_line:end_line])
+                asm_data = ''.join(filedata[start_line:end_line])
                 asm_block = self.compile_asm_block(asm_data, line.line_number, c2, c2_addr)
                 op_lines[index] = MGCLine(line.line_number, [Operation('HEX', asm_block)])
         return op_lines
