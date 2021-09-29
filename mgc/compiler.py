@@ -1,11 +1,9 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-from . import logger, mgc_file
+from . import logger, builder
 from .logger import log
 from .errors import *
-from .lineparser import *
-from .mgc_file import *
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
 
@@ -49,9 +47,9 @@ def compile(root_mgc_path, input_gci=None, silent=False, debug=False, nopack=Fal
     # Set root directory
     if root_mgc_path:
         root_mgc_path = Path(root_mgc_path).absolute()
-        mgc_file.tmp_directory = root_mgc_path.parent/"tmp"
+        builder.tmp_directory = root_mgc_path.parent/"tmp"
         try:
-            mgc_file.tmp_directory.mkdir(exist_ok=True)
+            builder.tmp_directory.mkdir(exist_ok=True)
         except FileNotFoundError:
             raise CompileError("Unable to create tmp directory")
 
@@ -106,7 +104,7 @@ def _compile_file(mgc_file, ref_mgc_file=None, ref_line_number=None):
     if mgc_file in mgc_stack:
         raise CompileError("MGC files are sourcing each other in an infinite loop", ref_mgc_file, ref_line_number)
     mgc_stack.append(mgc_file)
-    for line in mgc_file.get_lines():
+    for line in mgc_file.lines:
         for op in line.op_list:
             OPCODE_FUNCS[op.codetype](op.data, mgc_file, line.line_number)
     mgc_stack.pop()
@@ -125,27 +123,31 @@ def _load_mgc_file(filepath):
     except UnicodeDecodeError:
         raise CompileError("Unable to read MGC file; make sure it's a text file")
     # Store file data
-    newfile = MGCFile(filepath, filedata)
+    try:
+        newfile = builder.build_mgcfile(filepath, filedata)
+    except CompileError as e:
+        e.mgc_file = filepath
+        raise
     mgc_files[filepath] = newfile
     # See if the new file sources any additional files we need to load
     additional_files = []
-    for line in newfile.mgc_lines:
-        for operation in line.op_list:
-            if operation.codetype != 'COMMAND': continue
-            if operation.data.name == 'src':
-                additional_files.append(parent.joinpath(operation.data.args[0]))
-            elif operation.data.name == 'asmsrc':
-                _load_asm_file(parent.joinpath(operation.data.args[0]))
-            elif operation.data.name == 'geckocodelist':
-                _load_geckocodelist_file(parent.joinpath(operation.data.args[0]))
-            elif operation.data.name == 'file':
-                _load_bin_file(parent.joinpath(operation.data.args[0]))
+    for line in newfile.lines:
+        for op in line.op_list:
+            if op.codetype != 'COMMAND': continue
+            if op.data.name == 'src':
+                additional_files.append(parent.joinpath(op.data.args[0]))
+            elif op.data.name == 'asmsrc':
+                _load_asm_file(parent.joinpath(op.data.args[0]))
+            elif op.data.name == 'geckocodelist':
+                _load_geckocodelist_file(parent.joinpath(op.data.args[0]))
+            elif op.data.name == 'file':
+                _load_bin_file(parent.joinpath(op.data.args[0]))
     return additional_files
 
 def _load_geckocodelist_file(filepath):
     """Loads a Gecko codelist file from disk and stores its data in
        geckocodelist_files"""
-    if filepath in geckocodelist_files: return
+    if filepath in bin_files: return
     log('INFO', f"Loading Gecko codelist file {filepath.name}")
     try:
         with filepath.open('r') as f:
@@ -154,7 +156,7 @@ def _load_geckocodelist_file(filepath):
         raise CompileError(f"File not found: {str(filepath)}")
     except UnicodeDecodeError:
         raise CompileError("Unable to read Gecko codelist file; make sure it's a text file")
-    geckocodelist_files[filepath] = GeckoCodelistFile(filepath, filedata)
+    bin_files[filepath] = builder.build_geckofile(filepath, filedata)
     return
 
 def _load_bin_file(filepath):
@@ -166,7 +168,7 @@ def _load_bin_file(filepath):
             filedata = f.read()
     except FileNotFoundError:
         raise CompileError(f"File not found: {str(filepath)}")
-    bin_files[filepath] = BINFile(filepath, filedata)
+    bin_files[filepath] = builder.build_binfile(filepath, filedata)
 
 def _load_asm_file(filepath):
     """Loads an ASM code file from disk and stores its data in bin_files
@@ -178,7 +180,7 @@ def _load_asm_file(filepath):
             filedata = f.read()
     except FileNotFoundError:
         raise CompileError(f"File not found: {str(filepath)}")
-    bin_files[filepath] = ASMFile(filepath, filedata)
+    bin_files[filepath] = builder.build_asmfile(filepath, filedata)
 
 def _load_all_mgc_files(root_filepath):
     """Loads all required MGC files from disk, starting with the root file"""
@@ -226,7 +228,6 @@ def _write_data(data, mgc_file, line_number):
     return
 
 def _check_write_history(write_table, mgc_file, line_number):
-    global write_history
     for entry in write_table:
         gci_pointer, data_length = entry
         for history_entry in write_history:
@@ -261,9 +262,9 @@ def _process_error(data, mgcfile, line_number):
 def _process_macro(data, mgcfile, line_number):
     macro_name = data.name
     macro_count = data.count
-    if not macro_name in mgc_file.macros:
+    if not macro_name in builder.macros:
         raise CompileError(f"Undefined macro: {macro_name}, mgcfile, line_number")
-    op_list = mgc_file.macros[macro_name]
+    op_list = builder.macros[macro_name]
     for _ in range(macro_count):
         for op in op_list:
             OPCODE_FUNCS[op.codetype](op.data, mgcfile, line_number)
@@ -301,11 +302,11 @@ def _cmd_process_asmsrc(data, mgcfile, line_number):
     return
 def _cmd_process_file(data, mgcfile, line_number):
     file = mgcfile.filepath.parent.joinpath(data[0])
-    _write_data(bin_files[file].filedata, mgcfile, line_number)
+    _write_data(bin_files[file], mgcfile, line_number)
     return
 def _cmd_process_geckocodelist(data, mgcfile, line_number):
     file = mgcfile.filepath.parent.joinpath(data[0])
-    _write_data(geckocodelist_files[file].filedata, mgcfile, line_number)
+    _write_data(bin_files[file], mgcfile, line_number)
     return
 def _cmd_process_string(data, mgcfile, line_number):
     _write_data(bytearray(bytes(data[0], 'utf-8').decode("unicode_escape"), encoding='ascii'), mgcfile, line_number)

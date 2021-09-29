@@ -27,7 +27,9 @@ def format_log(logtype, message, mgc_file=None, line_number=None):
     file_string = ''
     line_string = ''
     if mgc_file:
-        filepath = mgc_file.filepath
+        # TODO: Finish consolidating types
+        try: filepath = mgc_file.filepath
+        except: filepath = mgc_file
         file_string = str(filepath)
         if len(file_string) > MAX_FILE_STRING_LENGTH:
             root_string = filepath.parts[0]
