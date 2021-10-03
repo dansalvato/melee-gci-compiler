@@ -51,7 +51,7 @@ def build_asmfile(filepath, filedata):
 def build_geckofile(filepath, filedata):
     header = bytearray.fromhex('00d0c0de00d0c0de')
     footer = bytearray.fromhex('f000000000000000')
-    data = bytearray(0)
+    data = bytearray()
     for line_number, line in enumerate(filedata):
         if line[0] != '*': continue
         line = line[1:]
@@ -99,8 +99,7 @@ def _preprocess_op_lines(filepath, filedata, start_line, end_line):
     return op_lines
 
 def _add_defines(filepath, op_list, line_number):
-    for op in op_list:
-        if op.codetype != 'COMMAND': continue
+    for op in _get_commands(op_list):
         if op.data.name != 'define': continue
         alias_name = '[' + op.data.args[0] + ']'
         alias_data = op.data.args[1]
@@ -111,19 +110,19 @@ def _add_defines(filepath, op_list, line_number):
 
 def _check_open_tag(op_list):
     OPEN_TAG_NAMES = ['asm', 'c2']
-    for op in op_list:
-        if (op.codetype != 'COMMAND'):
-            continue
+    for op in _get_commands(op_list):
         if op.data.name in OPEN_TAG_NAMES:
             return op.data.name
     return None
 
 def _check_close_tag(op_list, open_tag):
-    for op in op_list:
-        if (op.codetype == 'COMMAND' and
-            op.data.name == open_tag + 'end'):
+    for op in _get_commands(op_list):
+        if op.data.name == open_tag + 'end':
             return True
     return False
+
+def _get_commands(op_list):
+    return [op for op in op_list if op.codetype == 'COMMAND']
 
 def _preprocess_begin_end(filepath, filedata):
     start_line = 0
@@ -141,8 +140,7 @@ def _preprocess_begin_end(filepath, filedata):
 def _preprocess_asm(filepath, filedata, op_lines):
     ASM_COMMANDS = ['asm', 'c2']
     for index, line in enumerate(op_lines):
-        for op in line.op_list:
-            if op.codetype != 'COMMAND': continue
+        for op in _get_commands(line.op_list):
             if op.data.name not in ASM_COMMANDS: continue
             c2 = op.data.name == 'c2'
             c2_addr = op.data.args[0] if c2 else None
@@ -161,8 +159,7 @@ def _preprocess_macros(filepath, op_lines):
     macro_op_list = []
     for line in op_lines:
         if not mid_macro:
-            for op in line.op_list:
-                if op.codetype != 'COMMAND': continue
+            for op in _get_commands(line.op_list):
                 if op.data.name != 'macro': continue
                 macro_name = op.data.args[0]
                 if macro_name in macros:
