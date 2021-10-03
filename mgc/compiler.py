@@ -115,13 +115,7 @@ def _load_mgc_file(filepath):
     log('INFO', f"Loading MGC file {filepath.name}")
     filedata = []
     parent = filepath.parent
-    try:
-        with filepath.open('r') as f:
-            filedata = f.readlines()
-    except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}")
-    except UnicodeDecodeError:
-        raise CompileError("Unable to read MGC file; make sure it's a text file")
+    filedata = _read_text_file(filepath)
     # Store file data
     try:
         newfile = builder.build_mgcfile(filepath, filedata)
@@ -144,30 +138,39 @@ def _load_mgc_file(filepath):
                 _load_bin_file(parent.joinpath(op.data.args[0]))
     return additional_files
 
-def _load_geckocodelist_file(filepath):
-    """Loads a Gecko codelist file from disk and stores its data in
-       geckocodelist_files"""
-    if filepath in bin_files: return
-    log('INFO', f"Loading Gecko codelist file {filepath.name}")
+def _read_text_file(filepath):
+    """Reads a text file from disk and returns a list of each line of data"""
     try:
         with filepath.open('r') as f:
             filedata = f.readlines()
     except FileNotFoundError:
         raise CompileError(f"File not found: {str(filepath)}")
     except UnicodeDecodeError:
-        raise CompileError("Unable to read Gecko codelist file; make sure it's a text file")
-    bin_files[filepath] = builder.build_geckofile(filepath, filedata)
-    return
+        raise CompileError("Unable to read file; make sure it's a text file")
+    return filedata
 
-def _load_bin_file(filepath):
-    """Loads a binary file from disk and stores its data in bin_files"""
-    if filepath in bin_files: return
-    log('INFO', f"Loading binary file {filepath.name}")
+def _read_bin_file(filepath):
+    """Reads a binary file from disk and returns the byte array"""
     try:
         with filepath.open('rb') as f:
             filedata = f.read()
     except FileNotFoundError:
         raise CompileError(f"File not found: {str(filepath)}")
+    return filedata
+
+def _load_geckocodelist_file(filepath):
+    """Loads a Gecko codelist file from disk and stores its data in
+       geckocodelist_files"""
+    if filepath in bin_files: return
+    log('INFO', f"Loading Gecko codelist file {filepath.name}")
+    filedata = _read_text_file(filepath)
+    bin_files[filepath] = builder.build_geckofile(filepath, filedata)
+
+def _load_bin_file(filepath):
+    """Loads a binary file from disk and stores its data in bin_files"""
+    if filepath in bin_files: return
+    log('INFO', f"Loading binary file {filepath.name}")
+    filedata = _read_bin_file(filepath)
     bin_files[filepath] = builder.build_binfile(filepath, filedata)
 
 def _load_asm_file(filepath):
@@ -175,11 +178,7 @@ def _load_asm_file(filepath):
        (it gets compiled to binary as we load it from disk)"""
     if filepath in bin_files: return
     log('INFO', f"Loading ASM source file {filepath.name}")
-    try:
-        with filepath.open('r') as f:
-            filedata = f.read()
-    except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}")
+    filedata = _read_text_file(filepath)
     bin_files[filepath] = builder.build_asmfile(filepath, filedata)
 
 def _load_all_mgc_files(root_filepath):
