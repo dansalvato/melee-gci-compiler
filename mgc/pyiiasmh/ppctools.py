@@ -27,7 +27,7 @@
 import platform
 import subprocess
 from pathlib import Path
-from .errors import CodetypeError, UnsupportedOSError
+from .errors import CodetypeError
 
 eabi = {}
 
