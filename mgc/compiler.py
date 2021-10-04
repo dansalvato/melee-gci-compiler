@@ -43,7 +43,7 @@ def _init_new_gci() -> None:
     init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
     silent = logger.silent_log
     logger.silent_log = True
-    _load_all_mgc_files(init_gci_path)
+    _load_mgc_file(init_gci_path)
     _compile_file(init_gci_path)
     logger.silent_log = silent
 
@@ -81,7 +81,7 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
     write_history = []
     if root_path:
         # Load all src files into mgc_files
-        _load_all_mgc_files(root_path)
+        _load_mgc_file(root_path)
         # Begin compile
         _compile_file(root_path)
 
@@ -118,30 +118,14 @@ def _compile_file(filepath, ref_line_number=None):
 def _load_mgc_file(filepath):
     """Loads a MGC file from disk and stores its data in mgc_files"""
     filepath = filepath.resolve()
-    if filepath in mgc_files: return [] # Do nothing if the file is already loaded
-    log('INFO', f"Loading MGC file {filepath.name}")
-    filedata = []
-    parent = filepath.parent
+    if filepath in mgc_files: return
+    log('INFO', f"Reading MGC file {filepath.name}")
     filedata = _read_text_file(filepath)
     # Store file data
     logger.push_file(filepath)
     newfile = builder.build_mgcfile(filedata)
     logger.pop_file()
     mgc_files[filepath] = newfile
-    # See if the new file sources any additional files we need to load
-    additional_files = []
-    for line in newfile:
-        for op in line.op_list:
-            if op.codetype != 'COMMAND': continue
-            if op.data.name == 'src':
-                additional_files.append(parent.joinpath(op.data.args[0]))
-            elif op.data.name == 'asmsrc':
-                _load_asm_file(parent.joinpath(op.data.args[0]))
-            elif op.data.name == 'geckocodelist':
-                _load_geckocodelist_file(parent.joinpath(op.data.args[0]))
-            elif op.data.name == 'file':
-                _load_bin_file(parent.joinpath(op.data.args[0]))
-    return additional_files
 
 def _read_text_file(filepath):
     """Reads a text file from disk and returns a list of each line of data"""
@@ -165,10 +149,10 @@ def _read_bin_file(filepath):
 
 def _load_geckocodelist_file(filepath):
     """Loads a Gecko codelist file from disk and stores its data in
-       geckocodelist_files"""
+    bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Loading Gecko codelist file {filepath.name}")
+    log('INFO', f"Reading Gecko codelist file {filepath.name}")
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_geckofile(filedata)
@@ -178,7 +162,7 @@ def _load_bin_file(filepath):
     """Loads a binary file from disk and stores its data in bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Loading binary file {filepath.name}")
+    log('INFO', f"Reading binary file {filepath.name}")
     filedata = _read_bin_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_binfile(filedata)
@@ -189,20 +173,11 @@ def _load_asm_file(filepath):
        (it gets compiled to binary as we load it from disk)"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Loading ASM source file {filepath.name}")
+    log('INFO', f"Reading ASM source file {filepath.name}")
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_asmfile(filedata)
     logger.pop_file()
-
-def _load_all_mgc_files(root_filepath):
-    """Loads all required MGC files from disk, starting with the root file"""
-    additional_files = _load_mgc_file(root_filepath)
-    # This shouldn't infinite loop because already-loaded files return None
-    for path in additional_files:
-        additional_files += _load_mgc_file(path)
-
-
 
 def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
     """Writes a byte array to the GCI"""
@@ -308,17 +283,22 @@ def _cmd_process_add(data, filepath, line_number):
     return
 def _cmd_process_src(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
+    _load_mgc_file(file)
     _compile_file(file, line_number)
     return
 def _cmd_process_asmsrc(data, filepath, line_number):
-    _cmd_process_file(data, filepath, line_number)
+    file = filepath.parent.joinpath(data[0]).resolve()
+    _load_asm_file(file)
+    _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_file(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
+    _load_bin_file(file)
     _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_geckocodelist(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
+    _load_geckocodelist_file(file)
     _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_string(data, filepath, line_number):
