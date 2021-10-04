@@ -24,7 +24,6 @@ patch_mode = False
 # data to any MGCFile objects we create.
 mgc_files = {}
 bin_files = {}
-geckocodelist_files = {}
 
 # A list of the current MGC file stack if there are nested source files
 mgc_stack = []
