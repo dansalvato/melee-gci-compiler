@@ -6,6 +6,24 @@ from . import builder
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
+from typing import NamedTuple
+
+class WriteEntry(NamedTuple):
+    """An entry of data to write to the GCI."""
+    address: int
+    data: bytes
+
+    def intersects(self, entry: 'WriteEntry') -> bool:
+        """Tests if two WriteEntries intersect with each other."""
+        return ((self.address <= entry.address and
+                 self.address + len(self.data) > entry.address) or
+                (entry.address <= self.address and
+                 entry.address + len(entry.data) > self.address))
+
+class Context(NamedTuple):
+    """A file and line number responsible for the current operation."""
+    filepath: Path
+    line_number: int
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -189,40 +207,37 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
             patch_table.append((gci_pointer, data))
             gci_pointer += len(data)
             return
-        write_table = [(gci_pointer, len(data))]
+        write_list = [WriteEntry(gci_pointer, data)]
         gci_pointer += len(data)
     else:
         if loc_pointer < 0:
             raise CompileError("Data pointer must be a positive value", line_number)
         logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:", line_number)
         try:
-            write_table = data2gci(loc_pointer, len(data))
+            write_list = [WriteEntry(*entry) for entry in data2gci(loc_pointer, data)]
         except ValueError as e:
             raise CompileError(e, line_number)
         loc_pointer += len(data)
-    data_pointer = 0
-    _check_write_history(write_table, filepath, line_number)
-    for entry in write_table:
-        pointer, data_length = entry
+    _check_write_history(write_list, filepath, line_number)
+    for entry in write_list:
+        pointer, entrydata = entry
+        data_length = len(entrydata)
         logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
-        gci_data[pointer:pointer+data_length] = data[data_pointer:data_pointer+data_length]
-        data_pointer += data_length
-    write_history.append((write_table, filepath, line_number))
+        gci_data[pointer:pointer+data_length] = entrydata
+        write_history.append((entry, filepath, line_number))
     return
 
-def _check_write_history(write_table, filepath, line_number):
-    for entry in write_table:
-        gci_pointer, data_length = entry
+def _check_write_history(write_list: List[WriteEntry], filepath: Path, line_number: int):
+    for entry in write_list:
+        gci_pointer = entry.address
         for history_entry in write_history:
-            history_write_table = history_entry[0]
+            history_write_entry = history_entry[0]
             history_filepath = history_entry[1]
             history_line_number = history_entry[2]
-            for history_write_table_entry in history_write_table:
-                history_pointer, history_length = history_write_table_entry
-                if (history_pointer <= gci_pointer and history_pointer + history_length > gci_pointer) or \
-                   (gci_pointer <= history_pointer and gci_pointer + data_length > history_pointer):
-                    logger.warning(f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_filepath.name} (Line {history_line_number+1}) and is being overwritten", line_number)
-                    return
+            history_pointer = history_write_entry.address
+            if entry.intersects(history_write_entry):
+                logger.warning(f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_filepath.name} (Line {history_line_number+1}) and is being overwritten", line_number)
+                return
 
 def _process_bin(data, filepath, line_number):
     data_hex = format(int(data, 2), 'x')
