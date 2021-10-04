@@ -39,13 +39,28 @@ block_order = []
 # A list of (address, bytearray) tuples for writing !patch data at the end
 patch_table = []
 
-def _init_new_gci() -> None:
+def _init_new_gci() -> melee_gamedata:
     init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
     silent = logger.silent_log
     logger.silent_log = True
     _load_mgc_file(init_gci_path)
     _compile_file(init_gci_path)
     logger.silent_log = silent
+    return melee_gamedata(raw_bytes=gci_data)
+
+def _load_gci(gci_path: str) -> melee_gamedata:
+    try:
+        input_gci = melee_gamedata(filename=gci_path, packed=True)
+    except FileNotFoundError:
+        raise CompileError(f"Input GCI not found: {gci_path}")
+    try:
+        input_gci.unpack()
+    except Exception as e:
+        raise CompileError(f"GCI decoder: {e}")
+    gci_data = input_gci.raw_bytes
+    if len(gci_data) != 0x16040:
+        raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
+    return input_gci
 
 def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
     """Main compile routine: Takes a root MGC file path and compiles all data"""
@@ -60,35 +75,17 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
             builder.tmp_directory.mkdir(exist_ok=True)
         except FileNotFoundError:
             raise CompileError("Unable to create tmp directory")
-
     if input_gci_path:
         logger.info("Loading and unpacking input GCI")
-        try:
-            input_gci = melee_gamedata(filename=input_gci_path, packed=True)
-        except FileNotFoundError:
-            raise CompileError(f"Input GCI not found: {input_gci_path}")
-        try:
-            input_gci.unpack()
-        except Exception as e:
-            raise CompileError(f"GCI decoder: {e}")
-        gci_data = input_gci.raw_bytes
-        if len(gci_data) != 0x16040:
-            raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
+        input_gci = _load_gci(input_gci_path)
     else:
-        input_gci = None
         logger.info("Initializing new GCI")
-        _init_new_gci()
+        input_gci = _init_new_gci()
     write_history = []
     if root_path:
-        # Load all src files into mgc_files
         _load_mgc_file(root_path)
-        # Begin compile
         _compile_file(root_path)
-
-    if input_gci:
-        input_gci.raw_bytes = gci_data
-    else:
-        input_gci = melee_gamedata(raw_bytes=gci_data)
+    input_gci.raw_bytes = gci_data
     if block_order:
         input_gci.block_order = block_order
         input_gci.reorder_blocks()
