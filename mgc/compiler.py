@@ -1,5 +1,6 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
+
 from pathlib import Path
 from . import logger
 from . import builder
@@ -8,10 +9,18 @@ from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
 from typing import NamedTuple
 
+class Context(NamedTuple):
+    """A file and line number responsible for the current operation."""
+    filepath: Path
+    line_number: int
+
+empty_context = Context(Path(__file__), -1)
+
 class WriteEntry(NamedTuple):
     """An entry of data to write to the GCI."""
     address: int
     data: bytes
+    context: 'Context' = empty_context
 
     def intersects(self, entry: 'WriteEntry') -> bool:
         """Tests if two WriteEntries intersect with each other."""
@@ -19,11 +28,6 @@ class WriteEntry(NamedTuple):
                  self.address + len(self.data) > entry.address) or
                 (entry.address <= self.address and
                  entry.address + len(entry.data) > self.address))
-
-class Context(NamedTuple):
-    """A file and line number responsible for the current operation."""
-    filepath: Path
-    line_number: int
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -62,6 +66,7 @@ def _init_new_gci() -> melee_gamedata:
     logger.silent_log = True
     _load_mgc_file(init_gci_path)
     _compile_file(init_gci_path)
+    write_history.clear()
     logger.silent_log = silent
     return melee_gamedata(raw_bytes=gci_data)
 
@@ -84,31 +89,31 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
     global write_history, gci_data, block_order
     logger.silent_log = silent
     logger.debug_log = debug
-    # Set root directory
-    root_path = Path(root_mgc_path).absolute() if root_mgc_path else None
-    if root_path:
-        builder.tmp_directory = root_path.parent/"tmp"
-        try:
-            builder.tmp_directory.mkdir(exist_ok=True)
-        except FileNotFoundError:
-            raise CompileError("Unable to create tmp directory")
+    # Init GCI
     if input_gci_path:
         logger.info("Loading and unpacking input GCI")
         input_gci = _load_gci(input_gci_path)
     else:
         logger.info("Initializing new GCI")
         input_gci = _init_new_gci()
-    write_history = []
-    if root_path:
+    # Compile MGC file
+    if root_mgc_path:
+        root_path = Path(root_mgc_path).absolute()
+        builder.tmp_directory = root_path.parent/"tmp"
+        try:
+            builder.tmp_directory.mkdir(exist_ok=True)
+        except FileNotFoundError:
+            raise CompileError("Unable to create tmp directory")
         _load_mgc_file(root_path)
         _compile_file(root_path)
-    input_gci.raw_bytes = gci_data
+    # Reorder blocks
     if block_order:
         input_gci.block_order = block_order
         input_gci.reorder_blocks()
-    # Done with everything except packing, write the patch table
+    # Write patch table
     for address, data in patch_table:
         input_gci.raw_bytes[address:address+len(data)] = data
+    # Checksum and pack
     input_gci.recompute_checksums()
     if not nopack:
         logger.info("Packing GCI")
@@ -220,7 +225,7 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
         loc_pointer += len(data)
     _check_write_history(write_list, filepath, line_number)
     for entry in write_list:
-        pointer, entrydata = entry
+        pointer, entrydata, context = entry
         data_length = len(entrydata)
         logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
         gci_data[pointer:pointer+data_length] = entrydata
