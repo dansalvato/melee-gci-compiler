@@ -8,7 +8,6 @@ from .errors import *
 from .logger import log
 from collections import namedtuple
 
-MGCFile = namedtuple('MGCFile', ['filepath', 'lines'])
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 # This gets changed once compiler.py has a root MGC path
 tmp_directory = Path('')
@@ -16,7 +15,7 @@ current_path = Path('')
 # A dict of macros accessible by name, containing a list of operations
 macros = {}
 
-def _compile_asm_block(asm, line_number=-1, c2=False, c2_ba=None, filepath=None):
+def _compile_asm_block(asm, line_number=-1, c2=False, c2_ba=None):
     """Takes an ASM text string and compiles it to hex using pyiiasmh"""
     txtfile = tmp_directory/"code.txt"
     with open(txtfile, 'w') as f:
@@ -28,27 +27,27 @@ def _compile_asm_block(asm, line_number=-1, c2=False, c2_ba=None, filepath=None)
         if r:
             asm_line_number = int(r.group(1))
             error = r.group(2)
-            raise CompileError(f"Error compiling ASM: {error}", filepath, line_number+asm_line_number)
+            raise CompileError(f"Error compiling ASM: {error}", line_number+asm_line_number)
         else:
-            raise CompileError(f"Error compiling ASM", filepath, line_number)
+            raise CompileError(f"Error compiling ASM", line_number)
     except Exception as e:
-        raise CompileError(f"Error compiling ASM: {e}", filepath, line_number)
+        raise CompileError(f"Error compiling ASM: {e}", line_number)
     if c2:
         c2_ba = "%08x" % c2_ba
         try:
             compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
         except Exception as e:
-            raise CompileError(f"Error compiling ASM: {e}", filepath, line_number)
+            raise CompileError(f"Error compiling ASM: {e}", line_number)
     return compiled_asm
 
-def build_binfile(filepath, filedata):
+def build_binfile(filedata):
     return filedata
 
-def build_asmfile(filepath, filedata):
-    compiled_asm = _compile_asm_block(filedata, filepath=filepath)
+def build_asmfile(filedata):
+    compiled_asm = _compile_asm_block(filedata)
     return bytearray.fromhex(compiled_asm)
 
-def build_geckofile(filepath, filedata):
+def build_geckofile(filedata):
     header = bytearray.fromhex('00d0c0de00d0c0de')
     footer = bytearray.fromhex('f000000000000000')
     data = bytearray()
@@ -58,24 +57,23 @@ def build_geckofile(filepath, filedata):
         try:
             data += bytearray.fromhex(line)
         except ValueError:
-            raise CompileError("Invalid Gecko code line", filepath, line_number)
+            raise CompileError("Invalid Gecko code line", line_number)
     return header + data + footer
 
-def build_mgcfile(filepath, filedata):
-    filepath = filepath
-    start_line, end_line = _preprocess_begin_end(filepath, filedata)
-    op_lines = _preprocess_op_lines(filepath, filedata, start_line, end_line)
-    op_lines = _preprocess_asm(filepath, filedata, op_lines)
-    op_lines = _preprocess_macros(filepath, op_lines)
+def build_mgcfile(filedata):
+    start_line, end_line = _preprocess_begin_end(filedata)
+    op_lines = _preprocess_op_lines(filedata, start_line, end_line)
+    op_lines = _preprocess_asm(filedata, op_lines)
+    op_lines = _preprocess_macros(op_lines)
     # TODO: Raise errors in lineparser.py and try/catch here
     for line in op_lines:
         line_number = line.line_number
         for op in line.op_list:
             if op.codetype == 'ERROR':
-                raise CompileError(op.data, filepath, line_number)
-    return MGCFile(filepath, op_lines)
+                raise CompileError(op.data, line_number)
+    return op_lines
 
-def _preprocess_op_lines(filepath, filedata, start_line, end_line):
+def _preprocess_op_lines(filedata, start_line, end_line):
     op_lines = []
     open_tag = None
     open_tag_line = 0
@@ -83,7 +81,7 @@ def _preprocess_op_lines(filepath, filedata, start_line, end_line):
         op_list = lineparser.parse_opcodes(line)
         if not op_list:
             continue
-        _add_defines(filepath, op_list, line_number)
+        _add_defines(op_list, line_number)
         if open_tag:
             if _check_close_tag(op_list, open_tag):
                 open_tag = None
@@ -95,16 +93,16 @@ def _preprocess_op_lines(filepath, filedata, start_line, end_line):
         op_lines.append(MGCLine(line_number, op_list))
     if open_tag:
         raise CompileError(f"Command does not have an end specified",
-                           filepath, open_tag_line)
+                           open_tag_line)
     return op_lines
 
-def _add_defines(filepath, op_list, line_number):
+def _add_defines(op_list, line_number):
     for op in _get_commands(op_list):
         if op.data.name != 'define': continue
         alias_name = '[' + op.data.args[0] + ']'
         alias_data = op.data.args[1]
         if alias_name in lineparser.aliases:
-            log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", filepath, line_number)
+            log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", line_number)
         lineparser.aliases[alias_name] = alias_data
     return
 
@@ -124,7 +122,7 @@ def _check_close_tag(op_list, open_tag):
 def _get_commands(op_list):
     return [op for op in op_list if op.codetype == 'COMMAND']
 
-def _preprocess_begin_end(filepath, filedata):
+def _preprocess_begin_end(filedata):
     start_line = 0
     end_line = len(filedata)
     for line_number, line in enumerate(filedata):
@@ -137,7 +135,7 @@ def _preprocess_begin_end(filepath, filedata):
             break
     return start_line, end_line
 
-def _preprocess_asm(filepath, filedata, op_lines):
+def _preprocess_asm(filedata, op_lines):
     ASM_COMMANDS = ['asm', 'c2']
     for index, line in enumerate(op_lines):
         for op in _get_commands(line.op_list):
@@ -147,11 +145,11 @@ def _preprocess_asm(filepath, filedata, op_lines):
             start_line = line.line_number + 1
             end_line = op_lines.pop(index+1).line_number
             asm_data = ''.join(filedata[start_line:end_line])
-            asm_block = _compile_asm_block(asm_data, line.line_number, c2, c2_addr, filepath)
+            asm_block = _compile_asm_block(asm_data, line.line_number, c2, c2_addr)
             op_lines[index] = MGCLine(line.line_number, [lineparser.Operation('HEX', asm_block)])
     return op_lines
 
-def _preprocess_macros(filepath, op_lines):
+def _preprocess_macros(op_lines):
     """Looks for macro definitions and adds them to the macros dict"""
     new_op_lines = []
     mid_macro = False
@@ -163,7 +161,7 @@ def _preprocess_macros(filepath, op_lines):
                 if op.data.name != 'macro': continue
                 macro_name = op.data.args[0]
                 if macro_name in macros:
-                    log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", filepath, line.line_number)
+                    log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", line.line_number)
                 mid_macro = True
                 macro_start_line = line.line_number
                 macro_op_list.clear()
@@ -172,15 +170,15 @@ def _preprocess_macros(filepath, op_lines):
         else:
             for op in line.op_list:
                 if op.codetype == 'MACRO':
-                    raise CompileError("Macros cannot call other macros", filepath, line.line_number)
+                    raise CompileError("Macros cannot call other macros", line.line_number)
                 if op.codetype != 'COMMAND': continue
                 if op.data.name == 'macro':
-                    raise CompileError("Macros cannot define other macros", filepath, line.line_number)
+                    raise CompileError("Macros cannot define other macros", line.line_number)
                 if op.data.name != 'macroend': continue
                 mid_macro = False
                 macros[macro_name] = macro_op_list.copy()
                 break
             macro_op_list += line.op_list
     if mid_macro:
-        raise CompileError("Macro does not have an end specified", filepath, macro_start_line)
+        raise CompileError("Macro does not have an end specified", macro_start_line)
     return new_op_lines

@@ -62,11 +62,11 @@ def main(argv):
             sys.exit(2)
 
     try:
-        gci_data = compiler.compile(script_path, input_gci=input_gci, nopack=nopack, silent=silent, debug=debug)
+        gci_data = compiler.compile(script_path, input_gci_path=input_gci, nopack=nopack, silent=silent, debug=debug)
     except CompileError as e:
         if debug: raise
         else:
-            print(e)
+            logger.log('ERROR', e.value, e.line_number)
             _cleanup(script_path)
             sys.exit(10)
     log('INFO', "Compile successful")
