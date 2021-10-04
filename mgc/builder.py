@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from .pyiiasmh import ppctools
 from . import lineparser
+from . import logger
 from .errors import *
-from .logger import log
 from collections import namedtuple
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
@@ -102,7 +102,7 @@ def _add_defines(op_list, line_number):
         alias_name = '[' + op.data.args[0] + ']'
         alias_data = op.data.args[1]
         if alias_name in lineparser.aliases:
-            log('WARNING', f"Alias {alias_name} is already defined and will be overwritten", line_number)
+            logger.warning(f"Alias {alias_name} is already defined and will be overwritten", line_number)
         lineparser.aliases[alias_name] = alias_data
     return
 
@@ -161,7 +161,7 @@ def _preprocess_macros(op_lines):
                 if op.data.name != 'macro': continue
                 macro_name = op.data.args[0]
                 if macro_name in macros:
-                    log('WARNING', f"Macro {macro_name} is already defined; overwriting definition", line.line_number)
+                    logger.warning(f"Macro {macro_name} is already defined; overwriting definition", line.line_number)
                 mid_macro = True
                 macro_start_line = line.line_number
                 macro_op_list.clear()

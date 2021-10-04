@@ -2,13 +2,6 @@
 
 from pathlib import Path
 
-LOGTYPE_NAMES = [
-    "DEBUG",
-    "INFO",
-    "WARNING",
-    "ERROR"
-    ]
-
 MAX_FILE_STRING_LENGTH = 30
 _file_stack = []
 silent_log = False
@@ -24,7 +17,19 @@ def pop_file() -> None:
     if _file_stack:
         _file_stack.pop()
 
-def log(logtype: str, message: str, line_number: int=None) -> None:
+def debug(message: str, line_number: int=None) -> None:
+    _log('DEBUG', message, line_number)
+
+def info(message: str, line_number: int=None) -> None:
+    _log('INFO', message, line_number)
+
+def warning(message: str, line_number: int=None) -> None:
+    _log('WARNING', message, line_number)
+
+def error(message: str, line_number: int=None) -> None:
+    _log('ERROR', message, line_number)
+
+def _log(logtype: str, message: str, line_number: int=None) -> None:
     """Prints a log message to the console with the relevant file path and line
     number."""
     if silent_log and not debug_log:
@@ -32,13 +37,11 @@ def log(logtype: str, message: str, line_number: int=None) -> None:
     if logtype == 'DEBUG' and not debug_log:
         return
     filepath = _file_stack[-1] if _file_stack else None
-    message = format_log(logtype, message, filepath, line_number)
+    message = _format_log(logtype, message, filepath, line_number)
     print(message)
 
-def format_log(logtype: str, message: str, filepath: Path=None, line_number: int=None) -> str:
+def _format_log(logtype: str, message: str, filepath: Path=None, line_number: int=None) -> str:
     """Returns a formatted log message."""
-    if logtype not in LOGTYPE_NAMES:
-        raise ValueError("Attempted to log with an unknown logtype.")
     if _file_stack:
         filepath = _file_stack[-1]
     file_string = _format_filepath(filepath, line_number)

@@ -7,7 +7,6 @@ import hashlib
 from pathlib import Path
 from mgc import compiler
 import mgc.logger as logger
-from mgc.logger import log
 from mgc.errors import CompileError
 
 USAGE_TEXT = """\
@@ -45,7 +44,7 @@ def main(argv):
         print(USAGE_TEXT)
         sys.exit(0)
     elif len(args) == 0:
-        log('WARNING', "No MGC script specified; no custom data will be compiled")
+        logger.warning("No MGC script specified; no custom data will be compiled")
     else:
         script_path = args[0]
     for opt, arg in opts:
@@ -66,23 +65,23 @@ def main(argv):
     except CompileError as e:
         if debug: raise
         else:
-            logger.log('ERROR', e.value, e.line_number)
+            logger.error(e.value, e.line_number)
             _cleanup(script_path)
             sys.exit(10)
-    log('INFO', "Compile successful")
-    if not output_gci: log('INFO', "No output GCI specified; no files will be written")
-    elif nopack: log('INFO', "Writing unpacked GCI file; not loadable by Melee")
-    else: log('INFO', "Writing final GCI file")
+    logger.info("Compile successful")
+    if not output_gci: logger.info("No output GCI specified; no files will be written")
+    elif nopack: logger.info("Writing unpacked GCI file; not loadable by Melee")
+    else: logger.info("Writing final GCI file")
     if output_gci:
         try:
             with open(output_gci, 'wb') as f:
                 f.write(gci_data)
         except Exception as e:
             if debug: raise
-            else: log('ERROR', f"Couldn't write GCI file: {e}")
+            else: logger.error(f"Couldn't write GCI file: {e}")
     md5 = hashlib.md5(gci_data).hexdigest()
-    log('INFO', f"MD5: {md5}")
-    log('INFO', "Successfully finished all tasks")
+    logger.info(f"MD5: {md5}")
+    logger.info("Successfully finished all tasks")
     _cleanup(script_path)
     sys.exit()
 

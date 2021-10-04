@@ -1,8 +1,8 @@
 """compiler.py: Compiles MGC files into a block of data that is ready to write
 to the GCI."""
 from pathlib import Path
-from . import logger, builder
-from .logger import log
+from . import logger
+from . import builder
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
@@ -62,7 +62,7 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
             raise CompileError("Unable to create tmp directory")
 
     if input_gci_path:
-        log('INFO', "Loading and unpacking input GCI")
+        logger.info("Loading and unpacking input GCI")
         try:
             input_gci = melee_gamedata(filename=input_gci_path, packed=True)
         except FileNotFoundError:
@@ -76,7 +76,7 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
             raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     else:
         input_gci = None
-        log('INFO', "Initializing new GCI")
+        logger.info("Initializing new GCI")
         _init_new_gci()
     write_history = []
     if root_path:
@@ -97,14 +97,14 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
         input_gci.raw_bytes[address:address+len(data)] = data
     input_gci.recompute_checksums()
     if not nopack:
-        log('INFO', "Packing GCI")
+        logger.info("Packing GCI")
         input_gci.pack()
     return input_gci.raw_bytes
 
 def _compile_file(filepath, ref_line_number=None):
     """Compiles the data of a single file; !src makes this function recursive"""
     mgc_file = mgc_files[filepath]
-    log('INFO', f"Compiling {filepath.name}", ref_line_number)
+    logger.info(f"Compiling {filepath.name}", ref_line_number)
     if mgc_file in mgc_stack:
         raise CompileError("MGC files are sourcing each other in an infinite loop", ref_line_number)
     mgc_stack.append(mgc_file)
@@ -119,7 +119,7 @@ def _load_mgc_file(filepath):
     """Loads a MGC file from disk and stores its data in mgc_files"""
     filepath = filepath.resolve()
     if filepath in mgc_files: return
-    log('INFO', f"Reading MGC file {filepath.name}")
+    logger.info(f"Reading MGC file {filepath.name}")
     filedata = _read_text_file(filepath)
     # Store file data
     logger.push_file(filepath)
@@ -152,7 +152,7 @@ def _load_geckocodelist_file(filepath):
     bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Reading Gecko codelist file {filepath.name}")
+    logger.info(f"Reading Gecko codelist file {filepath.name}")
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_geckofile(filedata)
@@ -162,7 +162,7 @@ def _load_bin_file(filepath):
     """Loads a binary file from disk and stores its data in bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Reading binary file {filepath.name}")
+    logger.info(f"Reading binary file {filepath.name}")
     filedata = _read_bin_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_binfile(filedata)
@@ -173,7 +173,7 @@ def _load_asm_file(filepath):
        (it gets compiled to binary as we load it from disk)"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    log('INFO', f"Reading ASM source file {filepath.name}")
+    logger.info(f"Reading ASM source file {filepath.name}")
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_asmfile(filedata)
@@ -186,11 +186,11 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
         if gci_pointer < 0:
             raise CompileError("Data pointer must be a positive value", line_number)
         if not patch_mode:
-            log('DEBUG', f"Writing 0x{len(data):x} bytes in gci mode:", line_number)
+            logger.debug(f"Writing 0x{len(data):x} bytes in gci mode:", line_number)
         if gci_pointer + len(data) > len(gci_data):
             raise CompileError("Attempting to write past the end of the GCI", line_number)
         if patch_mode:
-            log('DEBUG', f"Sending entry to patch table for location 0x{gci_pointer:x}", line_number)
+            logger.debug(f"Sending entry to patch table for location 0x{gci_pointer:x}", line_number)
             patch_table.append((gci_pointer, data))
             gci_pointer += len(data)
             return
@@ -199,7 +199,7 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
     else:
         if loc_pointer < 0:
             raise CompileError("Data pointer must be a positive value", line_number)
-        log('DEBUG', f"Writing 0x{len(data):x} bytes in loc mode:", line_number)
+        logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:", line_number)
         try:
             write_table = data2gci(loc_pointer, len(data))
         except ValueError as e:
@@ -209,7 +209,7 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
     _check_write_history(write_table, filepath, line_number)
     for entry in write_table:
         pointer, data_length = entry
-        log('DEBUG', f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
+        logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
         gci_data[pointer:pointer+data_length] = data[data_pointer:data_pointer+data_length]
         data_pointer += data_length
     write_history.append((write_table, filepath, line_number))
@@ -226,7 +226,7 @@ def _check_write_history(write_table, filepath, line_number):
                 history_pointer, history_length = history_write_table_entry
                 if (history_pointer <= gci_pointer and history_pointer + history_length > gci_pointer) or \
                    (gci_pointer <= history_pointer and gci_pointer + data_length > history_pointer):
-                    log('WARNING', f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_filepath.name} (Line {history_line_number+1}) and is being overwritten", line_number)
+                    logger.warning(f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_filepath.name} (Line {history_line_number+1}) and is being overwritten", line_number)
                     return
 
 def _process_bin(data, filepath, line_number):
@@ -243,7 +243,7 @@ def _process_command(data, filepath, line_number):
     COMMAND_FUNCS[data.name](data.args, filepath, line_number)
     return
 def _process_warning(data, filepath, line_number):
-    log('WARNING', data, line_number)
+    logger.warning(data, line_number)
     return
 def _process_error(data, filepath, line_number):
     raise CompileError(data, line_number)
@@ -326,13 +326,13 @@ def _cmd_process_define(data, filepath, line_number):
     # parsed into Operations
     return
 def _cmd_process_begin(data, filepath, line_number):
-    log('WARNING', "!begin is used more than once; ignoring this one", line_number)
+    logger.warning("!begin is used more than once; ignoring this one", line_number)
     return
 def _cmd_process_end(data, filepath, line_number):
-    log('WARNING', "!end is used more than once; ignoring this one", line_number)
+    logger.warning("!end is used more than once; ignoring this one", line_number)
     return
 def _cmd_process_echo(data, filepath, line_number):
-    log('INFO', data[0])
+    logger.info(data[0])
     return
 def _cmd_process_blockorder(data, filepath, line_number):
     global block_order
