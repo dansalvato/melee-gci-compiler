@@ -47,7 +47,7 @@ def _init_new_gci() -> None:
     _compile_file(init_gci_path)
     logger.silent_log = silent
 
-def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False):
+def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
     """Main compile routine: Takes a root MGC file path and compiles all data"""
     global write_history, gci_data, block_order
     logger.silent_log = silent
@@ -101,12 +101,12 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
         input_gci.pack()
     return input_gci.raw_bytes
 
-def _compile_file(filepath, ref_line_number=None):
+def _compile_file(filepath: Path, line_number: int=None) -> None:
     """Compiles the data of a single file; !src makes this function recursive"""
     mgc_file = mgc_files[filepath]
-    logger.info(f"Compiling {filepath.name}", ref_line_number)
+    logger.info(f"Compiling {filepath.name}", line_number)
     if mgc_file in mgc_stack:
-        raise CompileError("MGC files are sourcing each other in an infinite loop", ref_line_number)
+        raise CompileError("MGC files are sourcing each other in an infinite loop", line_number)
     mgc_stack.append(mgc_file)
     logger.push_file(filepath)
     for line in mgc_file:
@@ -115,65 +115,64 @@ def _compile_file(filepath, ref_line_number=None):
     logger.pop_file()
     mgc_stack.pop()
 
-def _load_mgc_file(filepath):
+def _load_mgc_file(filepath: Path, line_number: int=None) -> None:
     """Loads a MGC file from disk and stores its data in mgc_files"""
     filepath = filepath.resolve()
     if filepath in mgc_files: return
-    logger.info(f"Reading MGC file {filepath.name}")
-    filedata = _read_text_file(filepath)
-    # Store file data
+    logger.info(f"Reading MGC file {filepath.name}", line_number)
+    filedata = _read_text_file(filepath, line_number)
     logger.push_file(filepath)
     newfile = builder.build_mgcfile(filedata)
     logger.pop_file()
     mgc_files[filepath] = newfile
 
-def _read_text_file(filepath):
+def _read_text_file(filepath: Path, line_number: int=None) -> List[str]:
     """Reads a text file from disk and returns a list of each line of data"""
     try:
         with filepath.open('r') as f:
             filedata = f.readlines()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}")
+        raise CompileError(f"File not found: {str(filepath)}", line_number)
     except UnicodeDecodeError:
-        raise CompileError("Unable to read file; make sure it's a text file")
+        raise CompileError("Unable to read file; make sure it's a text file", line_number)
     return filedata
 
-def _read_bin_file(filepath):
+def _read_bin_file(filepath: Path, line_number: int=None) -> bytes:
     """Reads a binary file from disk and returns the byte array"""
     try:
         with filepath.open('rb') as f:
             filedata = f.read()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}")
+        raise CompileError(f"File not found: {str(filepath)}", line_number)
     return filedata
 
-def _load_geckocodelist_file(filepath):
+def _load_geckocodelist_file(filepath: Path, line_number: int=None) -> None:
     """Loads a Gecko codelist file from disk and stores its data in
     bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading Gecko codelist file {filepath.name}")
+    logger.info(f"Reading Gecko codelist file {filepath.name}", line_number)
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_geckofile(filedata)
     logger.pop_file()
 
-def _load_bin_file(filepath):
+def _load_bin_file(filepath: Path, line_number: int=None) -> None:
     """Loads a binary file from disk and stores its data in bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading binary file {filepath.name}")
+    logger.info(f"Reading binary file {filepath.name}", line_number)
     filedata = _read_bin_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_binfile(filedata)
     logger.pop_file()
 
-def _load_asm_file(filepath):
+def _load_asm_file(filepath: Path, line_number: int=None) -> None:
     """Loads an ASM code file from disk and stores its data in bin_files
        (it gets compiled to binary as we load it from disk)"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading ASM source file {filepath.name}")
+    logger.info(f"Reading ASM source file {filepath.name}", line_number)
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
     bin_files[filepath] = builder.build_asmfile(filedata)
@@ -283,22 +282,22 @@ def _cmd_process_add(data, filepath, line_number):
     return
 def _cmd_process_src(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
-    _load_mgc_file(file)
+    _load_mgc_file(file, line_number)
     _compile_file(file, line_number)
     return
 def _cmd_process_asmsrc(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
-    _load_asm_file(file)
+    _load_asm_file(file, line_number)
     _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_file(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
-    _load_bin_file(file)
+    _load_bin_file(file, line_number)
     _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_geckocodelist(data, filepath, line_number):
     file = filepath.parent.joinpath(data[0]).resolve()
-    _load_geckocodelist_file(file)
+    _load_geckocodelist_file(file, line_number)
     _write_data(bin_files[file], filepath, line_number)
     return
 def _cmd_process_string(data, filepath, line_number):
