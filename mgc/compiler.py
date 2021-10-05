@@ -7,27 +7,8 @@ from . import builder
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
-from typing import NamedTuple
-
-class Context(NamedTuple):
-    """A file and line number responsible for the current operation."""
-    filepath: Path
-    line_number: int
-
-empty_context = Context(Path(__file__), -1)
-
-class WriteEntry(NamedTuple):
-    """An entry of data to write to the GCI."""
-    address: int
-    data: bytes
-    context: 'Context' = empty_context
-
-    def intersects(self, entry: 'WriteEntry') -> bool:
-        """Tests if two WriteEntries intersect with each other."""
-        return ((self.address <= entry.address and
-                 self.address + len(self.data) > entry.address) or
-                (entry.address <= self.address and
-                 entry.address + len(entry.data) > self.address))
+from .datatypes import Context, EMPTY_CONTEXT
+from .datatypes import WriteEntry
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
