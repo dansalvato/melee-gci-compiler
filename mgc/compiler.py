@@ -210,19 +210,18 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
         data_length = len(entrydata)
         logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
         gci_data[pointer:pointer+data_length] = entrydata
-        write_history.append((entry, filepath, line_number))
+        write_history.append(entry)
     return
 
 def _check_write_history(write_list: List[WriteEntry], filepath: Path, line_number: int):
     for entry in write_list:
         gci_pointer = entry.address
-        for history_entry in write_history:
-            history_write_entry = history_entry[0]
-            history_filepath = history_entry[1]
-            history_line_number = history_entry[2]
-            history_pointer = history_write_entry.address
-            if entry.intersects(history_write_entry):
-                logger.warning(f"GCI location 0x{max(history_pointer, gci_pointer):x} was already written to by {history_filepath.name} (Line {history_line_number+1}) and is being overwritten", line_number)
+        for prev_entry in write_history:
+            prev_filepath = prev_entry.context.filepath
+            prev_line_number = prev_entry.context.line_number
+            prev_pointer = prev_entry.address
+            if entry.intersects(prev_entry):
+                logger.warning(f"GCI location 0x{max(prev_pointer, gci_pointer):x} was already written to by {prev_filepath.name} (Line {prev_line_number+1}) and is being overwritten", line_number)
                 return
 
 def _process_bin(data, filepath, line_number):
