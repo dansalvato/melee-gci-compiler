@@ -7,7 +7,6 @@ from . import builder
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
-from .datatypes import Context, EMPTY_CONTEXT
 from .datatypes import WriteEntry
 
 # The earliest location we can inject data into the GCI
