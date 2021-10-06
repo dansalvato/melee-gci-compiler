@@ -128,13 +128,13 @@ class Fill(BaseWrite):
 class BaseFile(BaseWrite):
     """(Base class) Writes a file to the write table."""
 
-    def __init__(self, path: str, load_function: Callable[[Path], bytes]):
+    def __init__(self, path: str, filetype: type[files.BinFile]):
         self.path = Path(path).resolve()
-        self._loadfunc = load_function
+        self.filetype = filetype
 
     def run(self, state: CompilerState) -> CompilerState:
         if not self.path in state.bin_files:
-            state.bin_files[self.path] = self._loadfunc(self.path)
+            state.bin_files[self.path] = self.filetype(self.path)
         return super().run(state)
 
 
@@ -142,21 +142,21 @@ class File(BaseFile):
     """Writes a binary file to the write table."""
 
     def __init__(self, path: str):
-        super().__init__(path, files.load_bin_file)
+        super().__init__(path, files.BinFile)
 
 
 class Asmsrc(BaseFile):
     """Writes a compiled version of an ASM source file to the write table."""
 
     def __init__(self, path: str):
-        super().__init__(path, files.load_asm_file)
+        super().__init__(path, files.AsmFile)
 
 
 class Geckocodelist(BaseFile):
     """Writes a Gecko codelist file to the write table."""
 
     def __init__(self, path: str):
-        super().__init__(path, files.load_geckocodelist_file)
+        super().__init__(path, files.GeckoFile)
 
 
 class Src:
@@ -167,7 +167,8 @@ class Src:
 
     def run(self, state: CompilerState) -> CompilerState:
         if not self.path in state.mgc_files:
-            state.mgc_files[self.path] = files.load_mgc_file(self.path)
+            state.mgc_files[self.path] = files.MgcFile(self.path)
+            # TODO: Run compile method here
         return state
 
 

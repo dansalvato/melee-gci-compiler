@@ -9,6 +9,7 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
+from .files import BinFile, MgcFile
 
 
 class WriteEntry(NamedTuple):
@@ -36,8 +37,8 @@ class CompilerState:
     gci_pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
-    mgc_files: dict[Path, list] = field(default_factory=lambda: {})
-    bin_files: dict[Path, bytes] = field(default_factory=lambda: {})
+    mgc_files: dict[Path, MgcFile] = field(default_factory=lambda: {})
+    bin_files: dict[Path, BinFile] = field(default_factory=lambda: {})
     mgc_stack: list[Path] = field(default_factory=lambda: [])
     write_table: list[WriteEntry] = field(default_factory=lambda: [])
     block_order: list[int] = field(default_factory=lambda: [])
