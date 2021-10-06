@@ -5,6 +5,8 @@ from pathlib import Path
 from .pyiiasmh import ppctools
 from . import lineparser
 from . import logger
+from . import context
+from .context import Context
 from .errors import *
 from collections import namedtuple
 
@@ -47,18 +49,21 @@ def build_asmfile(filedata):
     compiled_asm = _compile_asm_block(filedata)
     return bytearray.fromhex(compiled_asm)
 
-def build_geckofile(filedata):
-    header = bytearray.fromhex('00d0c0de00d0c0de')
-    footer = bytearray.fromhex('f000000000000000')
-    data = bytearray()
-    for line_number, line in enumerate(filedata):
+def build_geckofile(path: Path, data: list[str]):
+    c = Context(path)
+    header = bytes.fromhex('00d0c0de00d0c0de')
+    footer = bytes.fromhex('f000000000000000')
+    bytedata = bytes()
+    for line_number, line in enumerate(data):
+        c.line_number = line_number
         if line[0] != '*': continue
         line = line[1:]
         try:
-            data += bytearray.fromhex(line)
+            bytedata += bytes.fromhex(line)
         except ValueError:
-            raise CompileError("Invalid Gecko code line", line_number)
-    return header + data + footer
+            raise BuildError("Invalid Gecko code line", c)
+    c.done()
+    return header + bytedata + footer
 
 def build_mgcfile(filedata):
     start_line, end_line = _preprocess_begin_end(filedata)

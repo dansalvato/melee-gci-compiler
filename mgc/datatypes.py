@@ -7,14 +7,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from .errors import CompileError
 from .gci_tools.mem2gci import *
-
-
-class Context(NamedTuple):
-    """A file and line number responsible for the current operation."""
-    filepath: Path
-    line_number: int
-
-EMPTY_CONTEXT = Context(Path('UNKNOWN_FILE'), -1)
+from .context import Context, EMPTY_CONTEXT
 
 
 class WriteEntry(NamedTuple):

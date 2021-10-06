@@ -7,7 +7,7 @@ import hashlib
 from pathlib import Path
 from mgc import compiler
 import mgc.logger as logger
-from mgc.errors import CompileError
+from mgc.errors import BuildError, CompileError
 
 USAGE_TEXT = """\
 Usage: melee-gci-compiler.py [options] [script_path]
@@ -62,6 +62,12 @@ def main(argv):
 
     try:
         gci_data = compiler.compile(script_path, input_gci_path=input_gci, nopack=nopack, silent=silent, debug=debug)
+    except BuildError as e:
+        if debug: raise
+        else:
+            logger.error(e.message)
+            _cleanup(script_path)
+            sys.exit(10)
     except CompileError as e:
         if debug: raise
         else:

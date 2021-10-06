@@ -153,7 +153,7 @@ def _load_geckocodelist_file(filepath: Path, line_number: int=None) -> None:
     logger.info(f"Reading Gecko codelist file {filepath.name}", line_number)
     filedata = _read_text_file(filepath)
     logger.push_file(filepath)
-    bin_files[filepath] = builder.build_geckofile(filedata)
+    bin_files[filepath] = builder.build_geckofile(filepath, filedata)
     logger.pop_file()
 
 def _load_bin_file(filepath: Path, line_number: int=None) -> None:
@@ -216,7 +216,7 @@ def _check_write_history(write_list: List[WriteEntry], filepath: Path, line_numb
     for entry in write_list:
         gci_pointer = entry.address
         for prev_entry in write_history:
-            prev_filepath = prev_entry.context.filepath
+            prev_filepath = prev_entry.context.path
             prev_line_number = prev_entry.context.line_number
             prev_pointer = prev_entry.address
             if entry.intersects(prev_entry):

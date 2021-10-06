@@ -1,6 +1,8 @@
 """logger.py: Formats and logs messages to the console during MGC compilation."""
 
 from pathlib import Path
+from . import context
+from .context import Context
 
 MAX_FILE_STRING_LENGTH = 30
 _file_stack = []
@@ -36,8 +38,14 @@ def _log(logtype: str, message: str, line_number: int=None) -> None:
         return
     if logtype == 'DEBUG' and not debug_log:
         return
-    filepath = _file_stack[-1] if _file_stack else None
-    message = _format_log(logtype, message, filepath, line_number)
+    c = context.top()
+    if c is not context.EMPTY_CONTEXT:
+        filepath = c.path
+        line = c.line_number
+    else:
+        filepath = _file_stack[-1] if _file_stack else None
+        line = line_number
+    message = _format_log(logtype, message, filepath, line)
     print(message)
 
 def _format_log(logtype: str, message: str, filepath: Path=None, line_number: int=None) -> str:
