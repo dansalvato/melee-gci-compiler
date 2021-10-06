@@ -8,6 +8,7 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
 from .datatypes import WriteEntry
+from .context import Context
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -102,27 +103,26 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
 
 def _compile_file(filepath: Path, line_number: int=None) -> None:
     """Compiles the data of a single file; !src makes this function recursive"""
+    logger.info(f"Compiling {filepath.name}")
+    c = Context(filepath)
     mgc_file = mgc_files[filepath]
-    logger.info(f"Compiling {filepath.name}", line_number)
     if mgc_file in mgc_stack:
-        raise CompileError("MGC files are sourcing each other in an infinite loop", line_number)
+        raise CompileError("MGC files are sourcing each other in an infinite loop")
     mgc_stack.append(mgc_file)
-    logger.push_file(filepath)
     for line in mgc_file:
+        c.line_number = line.line_number
         for op in line.op_list:
             OPCODE_FUNCS[op.codetype](op.data, filepath, line.line_number)
-    logger.pop_file()
     mgc_stack.pop()
+    c.done()
 
 def _load_mgc_file(filepath: Path, line_number: int=None) -> None:
     """Loads a MGC file from disk and stores its data in mgc_files"""
     filepath = filepath.resolve()
     if filepath in mgc_files: return
-    logger.info(f"Reading MGC file {filepath.name}", line_number)
+    logger.info(f"Reading MGC file {filepath.name}")
     filedata = _read_text_file(filepath, line_number)
-    logger.push_file(filepath)
     newfile = builder.build_mgcfile(filedata)
-    logger.pop_file()
     mgc_files[filepath] = newfile
 
 def _read_text_file(filepath: Path, line_number: int=None) -> List[str]:
@@ -131,9 +131,9 @@ def _read_text_file(filepath: Path, line_number: int=None) -> List[str]:
         with filepath.open('r') as f:
             filedata = f.readlines()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}", line_number)
+        raise CompileError(f"File not found: {str(filepath)}")
     except UnicodeDecodeError:
-        raise CompileError("Unable to read file; make sure it's a text file", line_number)
+        raise CompileError("Unable to read file; make sure it's a text file")
     return filedata
 
 def _read_bin_file(filepath: Path, line_number: int=None) -> bytes:
@@ -142,7 +142,7 @@ def _read_bin_file(filepath: Path, line_number: int=None) -> bytes:
         with filepath.open('rb') as f:
             filedata = f.read()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(filepath)}", line_number)
+        raise CompileError(f"File not found: {str(filepath)}")
     return filedata
 
 def _load_geckocodelist_file(filepath: Path, line_number: int=None) -> None:
@@ -150,45 +150,39 @@ def _load_geckocodelist_file(filepath: Path, line_number: int=None) -> None:
     bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading Gecko codelist file {filepath.name}", line_number)
+    logger.info(f"Reading Gecko codelist file {filepath.name}")
     filedata = _read_text_file(filepath)
-    logger.push_file(filepath)
     bin_files[filepath] = builder.build_geckofile(filepath, filedata)
-    logger.pop_file()
 
 def _load_bin_file(filepath: Path, line_number: int=None) -> None:
     """Loads a binary file from disk and stores its data in bin_files"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading binary file {filepath.name}", line_number)
+    logger.info(f"Reading binary file {filepath.name}")
     filedata = _read_bin_file(filepath)
-    logger.push_file(filepath)
     bin_files[filepath] = builder.build_binfile(filedata)
-    logger.pop_file()
 
 def _load_asm_file(filepath: Path, line_number: int=None) -> None:
     """Loads an ASM code file from disk and stores its data in bin_files
        (it gets compiled to binary as we load it from disk)"""
     filepath = filepath.resolve()
     if filepath in bin_files: return
-    logger.info(f"Reading ASM source file {filepath.name}", line_number)
+    logger.info(f"Reading ASM source file {filepath.name}")
     filedata = _read_text_file(filepath)
-    logger.push_file(filepath)
     bin_files[filepath] = builder.build_asmfile(filedata)
-    logger.pop_file()
 
 def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
     """Writes a byte array to the GCI"""
     global gci_data, loc_pointer, gci_pointer, write_history, block_order, patch_table
     if gci_pointer_mode:
         if gci_pointer < 0:
-            raise CompileError("Data pointer must be a positive value", line_number)
+            raise CompileError("Data pointer must be a positive value")
         if not patch_mode:
-            logger.debug(f"Writing 0x{len(data):x} bytes in gci mode:", line_number)
+            logger.debug(f"Writing 0x{len(data):x} bytes in gci mode:")
         if gci_pointer + len(data) > len(gci_data):
-            raise CompileError("Attempting to write past the end of the GCI", line_number)
+            raise CompileError("Attempting to write past the end of the GCI")
         if patch_mode:
-            logger.debug(f"Sending entry to patch table for location 0x{gci_pointer:x}", line_number)
+            logger.debug(f"Sending entry to patch table for location 0x{gci_pointer:x}")
             patch_table.append((gci_pointer, data))
             gci_pointer += len(data)
             return
@@ -196,18 +190,18 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
         gci_pointer += len(data)
     else:
         if loc_pointer < 0:
-            raise CompileError("Data pointer must be a positive value", line_number)
-        logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:", line_number)
+            raise CompileError("Data pointer must be a positive value")
+        logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:")
         try:
             write_list = [WriteEntry(*entry) for entry in data2gci(loc_pointer, data)]
         except ValueError as e:
-            raise CompileError(e, line_number)
+            raise CompileError(e)
         loc_pointer += len(data)
     _check_write_history(write_list, filepath, line_number)
     for entry in write_list:
         pointer, entrydata, context = entry
         data_length = len(entrydata)
-        logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}", line_number)
+        logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}")
         gci_data[pointer:pointer+data_length] = entrydata
         write_history.append(entry)
     return
@@ -220,7 +214,7 @@ def _check_write_history(write_list: List[WriteEntry], filepath: Path, line_numb
             prev_line_number = prev_entry.context.line_number
             prev_pointer = prev_entry.address
             if entry.intersects(prev_entry):
-                logger.warning(f"GCI location 0x{max(prev_pointer, gci_pointer):x} was already written to by {prev_filepath.name} (Line {prev_line_number+1}) and is being overwritten", line_number)
+                logger.warning(f"GCI location 0x{max(prev_pointer, gci_pointer):x} was already written to by {prev_filepath.name} (Line {prev_line_number+1}) and is being overwritten")
                 return
 
 def _process_bin(data, filepath, line_number):
@@ -245,7 +239,7 @@ def _process_macro(data, filepath, line_number):
     macro_name = data.name
     macro_count = data.count
     if not macro_name in builder.macros:
-        raise CompileError(f"Undefined macro: {macro_name}", line_number)
+        raise CompileError(f"Undefined macro: {macro_name}")
     op_list = builder.macros[macro_name]
     for _ in range(macro_count):
         for op in op_list:
@@ -305,25 +299,25 @@ def _cmd_process_asm(data, filepath, line_number):
     # ASM blocks are currently turned into hex write ops in builder.py
     return
 def _cmd_process_asmend(data, filepath, line_number):
-    raise CompileError("!asmend is used without a !asm preceding it", line_number)
+    raise CompileError("!asmend is used without a !asm preceding it")
 def _cmd_process_c2(data, filepath, line_number):
     # ASM blocks are currently turned into hex write ops in builder.py
     return
 def _cmd_process_c2end(data, filepath, line_number):
-    raise CompileError("!c2end is used without a !c2 preceding it", line_number)
+    raise CompileError("!c2end is used without a !c2 preceding it")
 def _cmd_process_macro(data, filepath, line_number):
     return
 def _cmd_process_macroend(data, filepath, line_number):
-    raise CompileError("!macroend is used without a !macro preceding it", line_number)
+    raise CompileError("!macroend is used without a !macro preceding it")
 def _cmd_process_define(data, filepath, line_number):
     # Aliases are added to the dict in MGCFile's init while the script is being
     # parsed into Operations
     return
 def _cmd_process_begin(data, filepath, line_number):
-    logger.warning("!begin is used more than once; ignoring this one", line_number)
+    logger.warning("!begin is used more than once; ignoring this one")
     return
 def _cmd_process_end(data, filepath, line_number):
-    logger.warning("!end is used more than once; ignoring this one", line_number)
+    logger.warning("!end is used more than once; ignoring this one")
     return
 def _cmd_process_echo(data, filepath, line_number):
     logger.info(data[0])
@@ -331,8 +325,8 @@ def _cmd_process_echo(data, filepath, line_number):
 def _cmd_process_blockorder(data, filepath, line_number):
     global block_order
     for arg in data:
-        if arg < 0: raise CompileError("Block number cannot be negative", line_number)
-        elif arg > 9: raise CompileError("Block number cannot be greater than 9", line_number)
+        if arg < 0: raise CompileError("Block number cannot be negative")
+        elif arg > 9: raise CompileError("Block number cannot be greater than 9")
     block_order = data
     return
 

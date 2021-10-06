@@ -2,22 +2,10 @@
 
 from pathlib import Path
 from . import context
-from .context import Context
 
 MAX_FILE_STRING_LENGTH = 30
-_file_stack = []
 silent_log = False
 debug_log = False
-
-def push_file(filepath: Path) -> None:
-    """Adds a file path to use for log messages."""
-    _file_stack.append(filepath)
-
-def pop_file() -> None:
-    """Removes the last file path used for log messages, such as when that file
-    is done being processed."""
-    if _file_stack:
-        _file_stack.pop()
 
 def debug(message: str, line_number: int=None) -> None:
     _log('DEBUG', message, line_number)
@@ -43,15 +31,13 @@ def _log(logtype: str, message: str, line_number: int=None) -> None:
         filepath = c.path
         line = c.line_number
     else:
-        filepath = _file_stack[-1] if _file_stack else None
+        filepath = None
         line = line_number
     message = _format_log(logtype, message, filepath, line)
     print(message)
 
 def _format_log(logtype: str, message: str, filepath: Path=None, line_number: int=None) -> str:
     """Returns a formatted log message."""
-    if _file_stack:
-        filepath = _file_stack[-1]
     file_string = _format_filepath(filepath, line_number)
     message = f"[{logtype}]{' ' * (9 - len(logtype))}{file_string}{message}"
     return message
