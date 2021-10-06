@@ -105,17 +105,15 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
 def _compile_file(filepath: Path, line_number: int=None) -> None:
     """Compiles the data of a single file; !src makes this function recursive"""
     logger.info(f"Compiling {filepath.name}")
-    c = Context(filepath)
     mgc_file = mgc_files[filepath]
     if mgc_file in mgc_stack:
         raise CompileError("MGC files are sourcing each other in an infinite loop")
     mgc_stack.append(mgc_file)
     for line in mgc_file:
-        c.line_number = line.line_number
-        for op in line.op_list:
-            OPCODE_FUNCS[op.codetype](op.data, filepath, line.line_number)
+        with Context(filepath, line.line_number):
+            for op in line.op_list:
+                OPCODE_FUNCS[op.codetype](op.data, filepath, line.line_number)
     mgc_stack.pop()
-    c.done()
 
 def _load_mgc_file(filepath: Path, line_number: int=None) -> None:
     """Loads a MGC file from disk and stores its data in mgc_files"""

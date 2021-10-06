@@ -26,19 +26,19 @@ def build_asmfile(filedata):
     return bytearray.fromhex(compiled_asm)
 
 def build_geckofile(path: Path, data: list[str]):
-    c = Context(path)
-    header = bytes.fromhex('00d0c0de00d0c0de')
-    footer = bytes.fromhex('f000000000000000')
-    bytedata = bytes()
-    for line_number, line in enumerate(data):
-        c.line_number = line_number
-        if line[0] != '*': continue
-        line = line[1:]
-        try:
-            bytedata += bytes.fromhex(line)
-        except ValueError:
-            raise BuildError("Invalid Gecko code line")
-    c.done()
+    with Context(path) as c:
+        header = bytes.fromhex('00d0c0de00d0c0de')
+        footer = bytes.fromhex('f000000000000000')
+        bytedata = bytes()
+        for line_number, line in enumerate(data):
+            c.line_number = line_number
+            if line[0] != '*':
+                continue
+            line = line[1:]
+            try:
+                bytedata += bytes.fromhex(line)
+            except ValueError:
+                raise BuildError("Invalid Gecko code line")
     return header + bytedata + footer
 
 def build_mgcfile(filedata):
