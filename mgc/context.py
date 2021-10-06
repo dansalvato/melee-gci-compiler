@@ -26,9 +26,7 @@ class Context:
             _context_stack.pop()
 
 
-EMPTY_CONTEXT = Context(Path('UNKNOWN_FILE'), None)
-
-
 def top():
     """Returns the top context to use for log messages."""
-    return _context_stack[-1]
+    return _context_stack[-1] if _context_stack else None
+
