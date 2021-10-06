@@ -1,12 +1,10 @@
 from abc import abstractmethod
 from typing import Protocol
-from typing import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from .datatypes import CompilerState
 from .datatypes import WriteEntry, WriteEntryList
 from .errors import CompileError
-from . import asm
 from . import logger
 from . import files
 
@@ -20,6 +18,7 @@ class Command(Protocol):
         raise NotImplementedError
 
 
+@dataclass
 class Loc:
     """Sets the loc pointer."""
     address: int
@@ -94,14 +93,14 @@ class BaseWrite:
         return
 
 
-class HexText(BaseWrite):
+class HexString(BaseWrite):
     """Writes a hex string as bytes to the write table."""
 
     def __init__(self, data: str):
         self.data = bytes.fromhex(data)
 
 
-class BinaryText(BaseWrite):
+class BinaryString(BaseWrite):
     """Writes a binary string as bytes to the write table."""
 
     def __init__(self, data: str):
@@ -138,7 +137,7 @@ class BaseFile(BaseWrite):
         return super().run(state)
 
 
-class File(BaseFile):
+class Bin(BaseFile):
     """Writes a binary file to the write table."""
 
     def __init__(self, path: str):
