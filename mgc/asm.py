@@ -5,8 +5,6 @@ from . import context
 
 def _make_tmp_directory():
     root = context.root()
-    if not root:
-        raise BuildError("Context stack is empty")
     tmp_directory = root.path.parent/'tmp'
     try:
         tmp_directory.mkdir(exist_ok=True)
@@ -18,8 +16,6 @@ def _make_tmp_directory():
 def compile_asm(asm: str) -> str:
     """Takes ASM and compiles it to hex using pyiiasmh."""
     c = context.top()
-    if not c:
-        raise BuildError("Context stack is empty")
     tmp_dir = _make_tmp_directory()
     txtfile = tmp_dir/"code.txt"
     with open(txtfile, 'w') as f:

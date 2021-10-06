@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from .errors import CompileError
 from .gci_tools.mem2gci import *
+from . import context
 from .context import Context
 
 
@@ -47,22 +48,22 @@ class CompilerState:
         return copy(self)
 
 
-def WriteEntryList(data: bytes, state: CompilerState, context: Context) -> list[WriteEntry]:
+def WriteEntryList(data: bytes, state: CompilerState) -> list[WriteEntry]:
     """Creates a list of write entries out of data."""
     if state.gci_pointer_mode:
         if state.gci_pointer < 0:
-            raise CompileError("Data pointer must be a positive value", context)
+            raise CompileError("Data pointer must be a positive value")
         if state.gci_pointer + len(data) > len(state.gci_data):
-            raise CompileError("Attempting to write past the end of the GCI", context)
-        return [WriteEntry(state.gci_pointer, data, context)]
+            raise CompileError("Attempting to write past the end of the GCI")
+        return [WriteEntry(state.gci_pointer, data, context.top())]
     else:
         if state.loc_pointer < 0:
-            raise CompileError("Data pointer must be a positive value", context)
+            raise CompileError("Data pointer must be a positive value")
         try:
             entries = data2gci(state.loc_pointer, data)
         except ValueError as e:
-            raise CompileError(e, context)
-        return [WriteEntry(*entry, context) for entry in entries]
+            raise CompileError(e)
+        return [WriteEntry(*entry, context.top()) for entry in entries]
 
 
 class MGCFile(NamedTuple):

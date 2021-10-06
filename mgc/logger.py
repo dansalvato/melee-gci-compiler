@@ -27,7 +27,7 @@ def _log(logtype: str, message: str, line_number: int=None) -> None:
     if logtype == 'DEBUG' and not debug_log:
         return
     c = context.top()
-    if c:
+    if c is not context.EMPTY_CONTEXT:
         filepath = c.path
         line = c.line_number
     else:

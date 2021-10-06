@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from .datatypes import CompilerState
 from .datatypes import WriteEntry, WriteEntryList
-from .datatypes import Context, EMPTY_CONTEXT
 from .errors import CompileError
+from . import asm
 from . import logger
 from . import files
 
@@ -74,7 +74,7 @@ class BaseWrite:
     data: bytes
 
     def run(self, state: CompilerState) -> CompilerState:
-        entries = WriteEntryList(self.data, state, EMPTY_CONTEXT)
+        entries = WriteEntryList(self.data, state)
         if state.patch_mode:
             state.patch_table += entries
         else:
