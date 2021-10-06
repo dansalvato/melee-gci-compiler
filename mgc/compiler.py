@@ -187,20 +187,20 @@ def _write_data(data: bytearray, filepath: Path, line_number: int) -> None:
             patch_table.append((gci_pointer, data))
             gci_pointer += len(data)
             return
-        write_list = [WriteEntry(gci_pointer, data, context.top())]
+        write_list = [WriteEntry(gci_pointer, data)]
         gci_pointer += len(data)
     else:
         if loc_pointer < 0:
             raise CompileError("Data pointer must be a positive value")
         logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:")
         try:
-            write_list = [WriteEntry(*entry, context.top()) for entry in data2gci(loc_pointer, data)]
+            write_list = [WriteEntry(*entry) for entry in data2gci(loc_pointer, data)]
         except ValueError as e:
             raise CompileError(e)
         loc_pointer += len(data)
     _check_write_history(write_list, filepath, line_number)
     for entry in write_list:
-        pointer, entrydata, c = entry
+        pointer, entrydata = entry.address, entry.data
         data_length = len(entrydata)
         logger.debug(f"        0x{data_length:x} bytes to 0x{pointer:x}")
         gci_data[pointer:pointer+data_length] = entrydata
