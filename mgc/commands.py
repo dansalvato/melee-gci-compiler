@@ -6,6 +6,7 @@ from pathlib import Path
 from .datatypes import CompilerState
 from .datatypes import WriteEntry, WriteEntryList
 from .datatypes import Context, EMPTY_CONTEXT
+from .errors import CompileError
 from . import logger
 from . import files
 
@@ -93,6 +94,23 @@ class BaseWrite:
         return
 
 
+class HexText(BaseWrite):
+    """Writes a hex string as bytes to the write table."""
+
+    def __init__(self, data: str):
+        self.data = bytes.fromhex(data)
+
+
+class BinaryText(BaseWrite):
+    """Writes a binary string as bytes to the write table."""
+
+    def __init__(self, data: str):
+        data_hex = format(int(data, 2), 'x')
+        if len(data_hex) % 2 > 0:
+            data_hex = '0' + data_hex
+        self.data = bytes.fromhex(data)
+
+
 class String(BaseWrite):
     """Writes a string as bytes to the write table."""
 
@@ -147,7 +165,75 @@ class Src:
     def __init__(self, path: str):
         self.path = Path(path).resolve()
 
-        def run(self, state: CompilerState) -> CompilerState:
-            if not self.path in state.mgc_files:
-                state.mgc_files[self.path] = files.load_mgc_file(self.path)
-            return state
+    def run(self, state: CompilerState) -> CompilerState:
+        if not self.path in state.mgc_files:
+            state.mgc_files[self.path] = files.load_mgc_file(self.path)
+        return state
+
+
+class Asm(BaseWrite):
+    """Write a compiled version of an ASM block to the write table."""
+    pass
+class C2(BaseWrite):
+    """Write a compiled version of a C2 ASM block to the write table."""
+    pass
+
+
+class Blockorder:
+    """Changes the order that blocks get arranged in the GCI file."""
+
+    def __init__(self, b0: int, b1: int, b2: int, b3: int, b4: int,
+                       b5: int, b6: int, b7: int, b8: int, b9: int):
+        self._blockorder = [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
+        for b in self._blockorder:
+            if b < 0:
+                raise CompileError("Block number cannot be negative")
+            elif b > 9:
+                raise CompileError("Block number cannot be greater than 9")
+
+    def run(self, state: CompilerState) -> CompilerState:
+        state.block_order = self._blockorder
+        return state
+
+
+@dataclass
+class Echo:
+    """Logs a message."""
+    message: str
+
+    def run(self, state: CompilerState) -> CompilerState:
+        logger.info(self.message)
+        return state
+
+
+
+@dataclass
+class NotRunnable:
+    """(Base class) Orphaned non-runnable builder commands that throw an error
+    when attempting to run."""
+    message: str
+
+    def run(self, state: CompilerState) -> CompilerState:
+        raise CompileError(self.message)
+
+
+class AsmEnd(NotRunnable):
+    """Not runnable. Signifies the end of an ASM block."""
+    def __init__(self):
+        self.message = "!asmend is used without a !asm preceding it"
+class C2End(NotRunnable):
+    """Not runnable. Signifies the end of a C2 ASM block."""
+    def __init__(self):
+        self.message = "!c2end is used without a !c2 preceding it"
+class MacroEnd(NotRunnable):
+    """Not runnable. Signifies the end of a macro block."""
+    def __init__(self):
+        self.message = "!macroend is used without a !macro preceding it"
+class Begin(NotRunnable):
+    """Not runnable. Signifies the beginning of an MGC script."""
+    def __init__(self):
+        self.message = "!begin is used more than once in this file"
+class End(NotRunnable):
+    """Not runnable. Signifies the end of an MGC script."""
+    def __init__(self):
+        self.message = "!end is used more than once in this file"
