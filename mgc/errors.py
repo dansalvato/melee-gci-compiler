@@ -15,4 +15,4 @@ class CompileError(Exception):
 class BuildError(Exception):
     """Raised when there is an error during a file building process."""
     message: str
-    context: Context
+

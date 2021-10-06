@@ -26,7 +26,12 @@ class Context:
             _context_stack.pop()
 
 
-def top():
+def top() -> Optional[Context]:
     """Returns the top context to use for log messages."""
     return _context_stack[-1] if _context_stack else None
+
+
+def root() -> Optional[Context]:
+    """Returns the root context."""
+    return _context_stack[0] if _context_stack else None
 

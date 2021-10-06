@@ -2,13 +2,14 @@
 Operations to execute."""
 import re
 from pathlib import Path
+from collections import namedtuple
 from .pyiiasmh import ppctools
 from . import lineparser
 from . import logger
 from . import context
 from .context import Context
 from .errors import *
-from collections import namedtuple
+from . import asm
 
 MGCLine = namedtuple('MGCLine', ['line_number', 'op_list'])
 # This gets changed once compiler.py has a root MGC path
@@ -17,36 +18,11 @@ current_path = Path('')
 # A dict of macros accessible by name, containing a list of operations
 macros = {}
 
-def _compile_asm_block(asm, line_number=-1, c2=False, c2_ba=None):
-    """Takes an ASM text string and compiles it to hex using pyiiasmh"""
-    txtfile = tmp_directory/"code.txt"
-    with open(txtfile, 'w') as f:
-        f.write(asm)
-    try:
-        compiled_asm = ppctools.asm_opcodes(tmp_directory)
-    except RuntimeError as e:
-        r = re.search(r'code\.txt\:(\d+)\: Error: (.*?)\\', str(e))
-        if r:
-            asm_line_number = int(r.group(1))
-            error = r.group(2)
-            raise CompileError(f"Error compiling ASM: {error}", line_number+asm_line_number)
-        else:
-            raise CompileError(f"Error compiling ASM", line_number)
-    except Exception as e:
-        raise CompileError(f"Error compiling ASM: {e}", line_number)
-    if c2:
-        c2_ba = "%08x" % c2_ba
-        try:
-            compiled_asm = ppctools.construct_code(compiled_asm, bapo=c2_ba, ctype='C2D2')
-        except Exception as e:
-            raise CompileError(f"Error compiling ASM: {e}", line_number)
-    return compiled_asm
-
 def build_binfile(filedata):
     return filedata
 
 def build_asmfile(filedata):
-    compiled_asm = _compile_asm_block(filedata)
+    compiled_asm = asm.compile_asm(filedata)
     return bytearray.fromhex(compiled_asm)
 
 def build_geckofile(path: Path, data: list[str]):
@@ -61,7 +37,7 @@ def build_geckofile(path: Path, data: list[str]):
         try:
             bytedata += bytes.fromhex(line)
         except ValueError:
-            raise BuildError("Invalid Gecko code line", c)
+            raise BuildError("Invalid Gecko code line")
     c.done()
     return header + bytedata + footer
 
@@ -146,11 +122,14 @@ def _preprocess_asm(filedata, op_lines):
         for op in _get_commands(line.op_list):
             if op.data.name not in ASM_COMMANDS: continue
             c2 = op.data.name == 'c2'
-            c2_addr = op.data.args[0] if c2 else None
             start_line = line.line_number + 1
             end_line = op_lines.pop(index+1).line_number
             asm_data = ''.join(filedata[start_line:end_line])
-            asm_block = _compile_asm_block(asm_data, line.line_number, c2, c2_addr)
+            if c2:
+                c2_addr = op.data.args[0]
+                asm_block = asm.compile_c2(asm_data, c2_addr)
+            else:
+                asm_block = asm.compile_asm(asm_data)
             op_lines[index] = MGCLine(line.line_number, [lineparser.Operation('HEX', asm_block)])
     return op_lines
 
