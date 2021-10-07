@@ -26,37 +26,29 @@ def _read_text_file(path: Path) -> list[str]:
     return data
 
 
-class BinFile:
+def bin_file(path: Path) -> bytes:
     """A binary file loaded from disk."""
-
-    def __init__(self, path: Path):
-        logger.info(f"Reading binary file {path.name}")
-        data = _read_bin_file(path)
-        self.data = builder.build_binfile(data)
+    logger.info(f"Reading binary file {path.name}")
+    data = _read_bin_file(path)
+    return builder.build_binfile(data)
 
 
-class AsmFile(BinFile):
+def asm_file(path: Path) -> bytes:
     """An ASM file loaded from disk and compiled into binary."""
-
-    def __init__(self, path: Path):
-        logger.info(f"Reading ASM source file {path.name}")
-        data = _read_text_file(path)
-        self.data = builder.build_asmfile(data)
+    logger.info(f"Reading ASM source file {path.name}")
+    data = _read_text_file(path)
+    return builder.build_asmfile(data)
 
 
-class GeckoFile(BinFile):
+def gecko_file(path: Path) -> bytes:
     """A Gecko codelist file loaded from disk and compiled into binary."""
-
-    def __init__(self, path: Path):
-        logger.info(f"Reading Gecko codelist file {path.name}")
-        data = _read_text_file(path)
-        self.data = builder.build_geckofile(path, data)
+    logger.info(f"Reading Gecko codelist file {path.name}")
+    data = _read_text_file(path)
+    return builder.build_geckofile(path, data)
 
 
-class MgcFile:
+def mgc_file(path: Path) -> list:
     """An MGC file loaded from disk and parsed into a Command list."""
-
-    def __init__(self, path: Path):
-        logger.info(f"Reading MGC file {path.name}")
-        data = _read_text_file(path)
-        self.commands = builder.build_mgcfile(data)
+    logger.info(f"Reading MGC file {path.name}")
+    data = _read_text_file(path)
+    return builder.build_mgcfile(data)

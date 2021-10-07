@@ -8,7 +8,6 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
-from .files import BinFile, MgcFile
 
 
 @dataclass
@@ -36,8 +35,8 @@ class CompilerState:
     gci_pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
-    mgc_files: dict[Path, MgcFile] = field(default_factory=dict)
-    bin_files: dict[Path, BinFile] = field(default_factory=dict)
+    mgc_files: dict[Path, bytes] = field(default_factory=dict)
+    bin_files: dict[Path, bytes] = field(default_factory=dict)
     mgc_stack: list[Path] = field(default_factory=list)
     write_table: list[WriteEntry] = field(default_factory=list)
     block_order: list[int] = field(default_factory=list)
