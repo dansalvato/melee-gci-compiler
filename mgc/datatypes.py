@@ -44,13 +44,14 @@ class CompilerState:
     patch_mode: bool = False
     asm_open: bool = False
     c2_open: bool = False
-    macro_open: bool = False
+    current_macro: str = ''
     mgc_files: dict[Path, list[CommandType]] = field(default_factory=dict)
     bin_files: dict[Path, bytes] = field(default_factory=dict)
     mgc_stack: list[Path] = field(default_factory=list)
     write_table: list[WriteEntry] = field(default_factory=list)
     block_order: list[int] = field(default_factory=list)
     patch_table: list[WriteEntry] = field(default_factory=list)
+    macro_files: dict[str, list[CommandType]] = field(default_factory=dict)
     asm_blocks: dict[str, bytes] = field(default_factory=dict)
 
     def copy(self) -> 'CompilerState':

@@ -1,3 +1,5 @@
+"""commands.py: Commands that were parsed from an MGC script file. These
+commands take the current compiler state and modify or add data to it."""
 from typing import Callable
 from pathlib import Path
 from .datatypes import CompilerState
@@ -109,17 +111,28 @@ def src(state: CompilerState, path: str) -> CompilerState:
 
 
 def asm(state: CompilerState, blockid: str) -> CompilerState:
-    """Write a compiled version of an ASM block to the write table.
+    """Writes a compiled version of an ASM block to the write table.
     blockid is generated when the ASM is compiled."""
     state.asm_open = True
     return write(state, state.asm_blocks[blockid])
 
 
 def c2(state: CompilerState, blockid: str) -> CompilerState:
-    """Write a compiled version of a C2 ASM block to the write table.
+    """Writes a compiled version of a C2 ASM block to the write table.
     blockid is generated when the ASM is compiled."""
     state.c2_open = True
     return write(state, state.asm_blocks[blockid])
+
+
+def macro(state: CompilerState, name: str) -> CompilerState:
+    """Defines a macro and adds all following commands to it until the end tag."""
+    if state.current_macro:
+        raise CompileError("Cannot define a macro inside another macro")
+    state.current_macro = name
+    if state.macro_files[name]:
+        logger.warning(f"Macro {name} already exists and is being overwritten")
+    state.macro_files[name] = []
+    return state
 
 
 def blockorder(state: CompilerState,
@@ -162,20 +175,20 @@ def c2end(state: CompilerState) -> CompilerState:
 
 def macroend(state: CompilerState) -> CompilerState:
     """Ends a macro block or raises an error if orphaned."""
-    if state.macro_open:
-        state.macro_open = False
+    if state.current_macro:
+        state.current_macro = ''
         return state
     message = "!macroend is used without a !macro preceding it"
     raise CompileError(message)
 
 
-def begin(state: CompilerState) -> CompilerState:
+def begin(_: CompilerState) -> CompilerState:
     """Not runnable. Signifies the beginning of an MGC script."""
     message = "!begin is used more than once in this file"
     raise CompileError(message)
 
 
-def end(state: CompilerState) -> CompilerState:
+def end(_: CompilerState) -> CompilerState:
     """Not runnable. Signifies the end of an MGC script."""
     message = "!end is used more than once in this file"
     raise CompileError(message)

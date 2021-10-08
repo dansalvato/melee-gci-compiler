@@ -38,7 +38,7 @@ def _binary_string(untyped: str) -> bytes:
 
 
 def integer(untyped: str) -> int:
-    """An integer in decimal (19) or hex (0x13) notation."""
+    """An integer in decimal (19) or hex (0x13) notation. Used when calling macros."""
     try:
         if untyped[:2] == '0x':
             return int(untyped, 16)
@@ -46,6 +46,12 @@ def integer(untyped: str) -> int:
             return int(untyped)
     except ValueError:
         raise BuildError("Invalid integer format")
+
+
+def address(untyped: str) -> int:
+    """An integer in pure hex format, without 0x notation. Used for commands
+    with memory addresses."""
+    return integer('0x' + untyped)
 
 
 def string(untyped: str) -> str:
