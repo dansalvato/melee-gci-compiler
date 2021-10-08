@@ -8,6 +8,7 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
+from typing import Callable
 
 
 @dataclass
@@ -28,6 +29,10 @@ class WriteEntry:
                  entry.address + len(entry.data) > self.address))
 
 
+# Used for type hinting to improve readability elsewhere in code
+CommandType = Callable[..., 'CompilerState']
+
+
 class CompilerState:
     """Keeps track of the current state of the compiler."""
     gci_data: bytearray = bytearray(0x16040)
@@ -35,7 +40,7 @@ class CompilerState:
     gci_pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
-    mgc_files: dict[Path, bytes] = field(default_factory=dict)
+    mgc_files: dict[Path, list[CommandType]] = field(default_factory=dict)
     bin_files: dict[Path, bytes] = field(default_factory=dict)
     mgc_stack: list[Path] = field(default_factory=list)
     write_table: list[WriteEntry] = field(default_factory=list)
