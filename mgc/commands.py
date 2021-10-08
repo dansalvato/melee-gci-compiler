@@ -108,14 +108,18 @@ def src(state: CompilerState, path: str) -> CompilerState:
     return state
 
 
-def asm(state: CompilerState, data: bytes) -> CompilerState:
-    """Write a compiled version of an ASM block to the write table."""
-    return write(state, data)
+def asm(state: CompilerState, blockid: str) -> CompilerState:
+    """Write a compiled version of an ASM block to the write table.
+    blockid is generated when the ASM is compiled."""
+    state.asm_open = True
+    return write(state, state.asm_blocks[blockid])
 
 
-def c2(state: CompilerState, data: bytes) -> CompilerState:
-    """Write a compiled version of a C2 ASM block to the write table."""
-    return write(state, data)
+def c2(state: CompilerState, blockid: str) -> CompilerState:
+    """Write a compiled version of a C2 ASM block to the write table.
+    blockid is generated when the ASM is compiled."""
+    state.c2_open = True
+    return write(state, state.asm_blocks[blockid])
 
 
 def blockorder(state: CompilerState,
@@ -139,22 +143,40 @@ def echo(state: CompilerState, message: str) -> CompilerState:
 
 
 def asmend(state: CompilerState) -> CompilerState:
-    """Not runnable. Signifies the end of an ASM block."""
+    """Ends an ASM block or raises an error if orphaned."""
+    if state.asm_open:
+        state.asm_open = False
+        return state
     message = "!asmend is used without a !asm preceding it"
     raise CompileError(message)
+
+
 def c2end(state: CompilerState) -> CompilerState:
-    """Not runnable. Signifies the end of a C2 ASM block."""
+    """Ends a C2 ASM block or raises an error if orphaned."""
+    if state.c2_open:
+        state.c2_open = False
+        return state
     message = "!c2end is used without a !c2 preceding it"
     raise CompileError(message)
+
+
 def macroend(state: CompilerState) -> CompilerState:
-    """Not runnable. Signifies the end of a macro block."""
+    """Ends a macro block or raises an error if orphaned."""
+    if state.macro_open:
+        state.macro_open = False
+        return state
     message = "!macroend is used without a !macro preceding it"
     raise CompileError(message)
+
+
 def begin(state: CompilerState) -> CompilerState:
     """Not runnable. Signifies the beginning of an MGC script."""
     message = "!begin is used more than once in this file"
     raise CompileError(message)
+
+
 def end(state: CompilerState) -> CompilerState:
     """Not runnable. Signifies the end of an MGC script."""
     message = "!end is used more than once in this file"
     raise CompileError(message)
+

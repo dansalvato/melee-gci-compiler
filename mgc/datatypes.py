@@ -8,7 +8,8 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
-from typing import Callable
+from typing import Callable, Concatenate, ParamSpec
+from typing import Any
 
 
 @dataclass
@@ -31,6 +32,7 @@ class WriteEntry:
 
 # Used for type hinting to improve readability elsewhere in code
 CommandType = Callable[..., 'CompilerState']
+CommandArgsType = Callable[[str], Any]
 
 
 class CompilerState:
@@ -40,12 +42,16 @@ class CompilerState:
     gci_pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
+    asm_open: bool = False
+    c2_open: bool = False
+    macro_open: bool = False
     mgc_files: dict[Path, list[CommandType]] = field(default_factory=dict)
     bin_files: dict[Path, bytes] = field(default_factory=dict)
     mgc_stack: list[Path] = field(default_factory=list)
     write_table: list[WriteEntry] = field(default_factory=list)
     block_order: list[int] = field(default_factory=list)
     patch_table: list[WriteEntry] = field(default_factory=list)
+    asm_blocks: dict[str, bytes] = field(default_factory=dict)
 
     def copy(self) -> 'CompilerState':
         """Easily creates a shallow copy of this object."""
