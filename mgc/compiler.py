@@ -4,7 +4,6 @@ to the GCI."""
 from pathlib import Path
 from . import logger
 from . import builder
-from . import context
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
