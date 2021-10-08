@@ -120,7 +120,7 @@ def src(state: CompilerState, path: str) -> CompilerState:
     filepath = Path(path).resolve()
     if not filepath in state.mgc_files:
         state.mgc_files[filepath] = files.mgc_file(filepath)
-        # TODO: Run compile method here
+    compiler._compile_file(filepath)
     return state
 
 
