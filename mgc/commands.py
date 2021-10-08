@@ -1,12 +1,11 @@
-from abc import abstractmethod
 from typing import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from .datatypes import CompilerState
 from .datatypes import WriteEntry, WriteEntryList
 from .errors import CompileError
 from . import logger
 from . import files
+from . import compiler
 
 
 def loc(state: CompilerState, address: int) -> CompilerState:
@@ -42,7 +41,7 @@ def add(state: CompilerState, amount: int) -> CompilerState:
     return state
 
 
-def _write(state: CompilerState, data: bytes) -> CompilerState:
+def write(state: CompilerState, data: bytes) -> CompilerState:
     """(Base class) Writes data to the write table."""
     entries = WriteEntryList(data, state)
     if state.patch_mode:
@@ -64,31 +63,16 @@ def _check_collisions(old_entries: list[WriteEntry], new_entries: list[WriteEntr
     return
 
 
-def hex_string(state: CompilerState, data: str) -> CompilerState:
-    """Writes a hex string as bytes to the write table."""
-    b = bytes.fromhex(data)
-    return _write(state, b)
-
-
-def binary_string(state: CompilerState, data: str) -> CompilerState:
-    """Writes a binary string as bytes to the write table."""
-    data_hex = format(int(data, 2), 'x')
-    if len(data_hex) % 2 > 0:
-        data_hex = '0' + data_hex
-    b = bytes.fromhex(data_hex)
-    return _write(state, b)
-
-
 def string(state: CompilerState, data: str) -> CompilerState:
-    """Writes a string as bytes to the write table."""
+    """Writes a string as bytes to the write table. Escape characters are decoded."""
     b = bytes(bytes(data, 'utf-8').decode("unicode_escape"), encoding='ascii')
-    return _write(state, b)
+    return write(state, b)
 
 
 def fill(state: CompilerState, count: int, pattern: bytes) -> CompilerState:
     """Writes a fill pattern to the write table."""
     b = pattern * count
-    return _write(state, b)
+    return write(state, b)
 
 
 def _file(state: CompilerState, path: str, filetype: Callable[[Path], bytes]) -> CompilerState:
@@ -97,7 +81,7 @@ def _file(state: CompilerState, path: str, filetype: Callable[[Path], bytes]) ->
     if not binpath in state.bin_files:
         state.bin_files[binpath] = filetype(binpath)
     data = state.bin_files[binpath]
-    return _write(state, data)
+    return write(state, data)
 
 
 def bin(state: CompilerState, path: str) -> CompilerState:
@@ -126,12 +110,12 @@ def src(state: CompilerState, path: str) -> CompilerState:
 
 def asm(state: CompilerState, data: bytes) -> CompilerState:
     """Write a compiled version of an ASM block to the write table."""
-    return _write(state, data)
+    return write(state, data)
 
 
 def c2(state: CompilerState, data: bytes) -> CompilerState:
     """Write a compiled version of a C2 ASM block to the write table."""
-    return _write(state, data)
+    return write(state, data)
 
 
 def blockorder(state: CompilerState,
