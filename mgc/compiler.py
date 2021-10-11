@@ -8,7 +8,10 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
 from .datatypes import WriteEntry
+from .datatypes import CommandType
+from .datatypes import CompilerState
 from .context import Context
+from .context import in_stack
 
 # The earliest location we can inject data into the GCI
 GCI_START_OFFSET = 0x2060
@@ -64,6 +67,27 @@ def _load_gci(gci_path: str) -> melee_gamedata:
     if len(gci_data) != 0x16040:
         raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     return input_gci
+
+
+def compile_file(path: Path, state: CompilerState) -> CompilerState:
+    if in_stack(path):
+        raise CompileError("MGC files are sourcing each other in an infinite loop")
+    with Context(path) as c:
+        for index, command in enumerate(state.mgc_files[path]):
+            c.line_number = index
+            if state.current_macro:
+                state.macro_files[state.current_macro].append(command)
+            else:
+                state = command(state.copy())
+    return state
+
+
+def compile_macro(name: str, count: int, state: CompilerState) -> CompilerState:
+    for _ in range(count):
+        for command in state.macro_files[name]:
+            state = command(state.copy())
+    return state
+
 
 def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
     """Main compile routine: Takes a root MGC file path and compiles all data"""

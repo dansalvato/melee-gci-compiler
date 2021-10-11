@@ -38,6 +38,11 @@ EMPTY_CONTEXT = Context(Path())
 _context_stack.append(EMPTY_CONTEXT)
 
 
+def in_stack(path: Path) -> bool:
+    """Determines whether a given path is already in the context stack."""
+    return path in [c.path for c in _context_stack]
+
+
 def top() -> Context:
     """Returns the top context to use for log messages."""
     return _context_stack[-1]

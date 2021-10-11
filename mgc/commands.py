@@ -140,8 +140,9 @@ def call_macro(name: str, count: int, state: CompilerState) -> CompilerState:
     """Calls a macro that was defined earlier."""
     if state.current_macro:
         raise CompileError("Cannot call a macro from within another macro""")
-    # TODO: Pass state to this
-    compiler.compile_commands(state.macro_files[state.current_macro], state)
+    if not state.macro_files[name]:
+        raise CompileError(f"Macro {name} is undefined")
+    compiler.compile_macro(name, count, state)
     return state
 
 
