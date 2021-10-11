@@ -24,9 +24,9 @@ _COMMANDS: dict[str, tuple[CommandType, list[Callable[[str], Any]]]] = {
     'geckocodelist':  (cmd.geckocodelist, [val.string]),
     'string': (cmd.string, [val.string]),
     'fill': (cmd.fill, [val.integer, val.data]),
-    'asm': (cmd.asm, [val.any]),
+    'asm': (cmd.asm, []),
     'asmend': (cmd.asmend, []),
-    'c2': (cmd.c2, [val.address, val.any]),
+    'c2': (cmd.c2, [val.address]),
     'c2end': (cmd.c2end, []),
     'begin': (cmd.begin, []),
     'end': (cmd.end, []),
@@ -39,14 +39,19 @@ _COMMANDS: dict[str, tuple[CommandType, list[Callable[[str], Any]]]] = {
     }
 
 
-def parse(line: str) -> CommandType | None:
+def parse(line: str, desired_command: str=None) -> CommandType | None:
     """Parses the MGC script line string into a command and arguments."""
     line = line.split('#')[0]
     line = _replace_aliases(line)
     line = line.strip()
     if not line:
         return None
-    cmdtype, validators = _get_command(line)
+    cmdname = _get_command(line)
+    if desired_command and cmdname != desired_command:
+        return None
+    if cmdname not in _COMMANDS or cmdname is None:
+        raise BuildError("Invalid syntax")
+    cmdtype, validators = _COMMANDS[cmdname]
     if cmdtype is cmd.write:
         args = line
     elif cmdtype is cmd.call_macro:
@@ -81,16 +86,13 @@ def _add_alias(name: str, value: str) -> None:
     _aliases[name] = value
 
 
-def _get_command(line: str) -> tuple[CommandType, list[CommandArgsType]]:
-    """Gets the command present on the current line during parse."""
+def _get_command(line: str) -> str | None:
+    """Gets the command name present on the current line during parse."""
     if line[0] in string.hexdigits or line[0] == '%':
-        return _COMMANDS['write']
+        return 'write'
     if line[0] == '+':
-        return _COMMANDS['callmacro']
+        return 'callmacro'
     if line[0] == '!':
-        cmdname = line.split()[0][1:]
-        if cmdname not in _COMMANDS:
-            raise BuildError("Invalid command name")
-        return _COMMANDS[line.split()[0][1:]]
-    raise BuildError("Invalid syntax")
+        return line.split()[0][1:]
+    return None
 

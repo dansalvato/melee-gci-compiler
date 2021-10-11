@@ -51,4 +51,4 @@ def mgc_file(path: Path) -> list:
     """An MGC file loaded from disk and parsed into a Command list."""
     logger.info(f"Reading MGC file {path.name}")
     data = _read_text_file(path)
-    return builder.build_mgcfile(data)
+    return builder.build_mgcfile(path, data)

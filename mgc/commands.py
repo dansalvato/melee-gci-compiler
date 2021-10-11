@@ -110,18 +110,16 @@ def src(path: str, state: CompilerState) -> CompilerState:
     return state
 
 
-def asm(blockid: str, state: CompilerState) -> CompilerState:
+def asm(data: bytes, state: CompilerState) -> CompilerState:
     """Writes a compiled version of an ASM block to the write table.
     blockid is generated when the ASM is compiled."""
-    state.asm_open = True
-    return write(state.asm_blocks[blockid], state)
+    return write(data, state)
 
 
-def c2(blockid: str, state: CompilerState) -> CompilerState:
+def c2(data: bytes, state: CompilerState) -> CompilerState:
     """Writes a compiled version of a C2 ASM block to the write table.
     blockid is generated when the ASM is compiled."""
-    state.c2_open = True
-    return write(state.asm_blocks[blockid], state)
+    return write(data, state)
 
 
 def macro(name: str, state: CompilerState) -> CompilerState:
@@ -165,30 +163,24 @@ def echo(message: str, state: CompilerState) -> CompilerState:
     return state
 
 
-def asmend(state: CompilerState) -> CompilerState:
-    """Ends an ASM block or raises an error if orphaned."""
-    if state.asm_open:
-        state.asm_open = False
-        return state
-    message = "!asmend is used without a !asm preceding it"
-    raise CompileError(message)
-
-
-def c2end(state: CompilerState) -> CompilerState:
-    """Ends a C2 ASM block or raises an error if orphaned."""
-    if state.c2_open:
-        state.c2_open = False
-        return state
-    message = "!c2end is used without a !c2 preceding it"
-    raise CompileError(message)
-
-
 def macroend(state: CompilerState) -> CompilerState:
     """Ends a macro block or raises an error if orphaned."""
     if state.current_macro:
         state.current_macro = ''
         return state
     message = "!macroend is used without a !macro preceding it"
+    raise CompileError(message)
+
+
+def asmend(_: CompilerState) -> CompilerState:
+    """Not runnable. Signifies the end of an ASM block."""
+    message = "!asmend is used without a !asm preceding it"
+    raise CompileError(message)
+
+
+def c2end(_: CompilerState) -> CompilerState:
+    """Not runnable. Signifies the end of a C2 ASM block."""
+    message = "!c2end is used without a !c2 preceding it"
     raise CompileError(message)
 
 

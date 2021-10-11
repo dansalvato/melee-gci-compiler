@@ -50,8 +50,6 @@ class CompilerState:
     gci_pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
-    asm_open: bool = False
-    c2_open: bool = False
     current_macro: str = ''
     mgc_files: dict[Path, list[MGCLine]] = field(default_factory=dict)
     bin_files: dict[Path, bytes] = field(default_factory=dict)
