@@ -22,7 +22,7 @@ def error(message: str, line_number: int=None) -> None:
 def _log(logtype: str, message: str, line_number: int=None) -> None:
     """Prints a log message to the console with the relevant file path and line
     number."""
-    if silent_log and not debug_log:
+    if silent_log and not debug_log and logtype != 'ERROR':
         return
     if logtype == 'DEBUG' and not debug_log:
         return
@@ -50,7 +50,7 @@ def _format_filepath(filepath: Path=None, line_number: int=None) -> str:
         if len(file_string) > MAX_FILE_STRING_LENGTH:
             root_string = filepath.parts[0]
             file_string = root_string + "..." + file_string[-(MAX_FILE_STRING_LENGTH-3) + len(root_string):]
-        if line_number is not None:
+        if line_number is not None and line_number >= 0:
             file_string += f", Line {str(line_number + 1)}"
         file_string = f"[{file_string}]" + ' '
     return file_string

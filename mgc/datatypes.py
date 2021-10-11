@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from dataclasses import field
 from .errors import CompileError
 from .gci_tools.mem2gci import *
+from . import logger
 from . import context
 from .context import Context
 from typing import NamedTuple
 from typing import Callable
-from typing import Any
 
 
 @dataclass
@@ -45,19 +45,19 @@ class MGCLine(NamedTuple):
 
 class CompilerState:
     """Keeps track of the current state of the compiler."""
+    path: Path = Path()
     gci_data: bytearray = bytearray(0x16040)
-    loc_pointer: int = 0
-    gci_pointer: int = 0
+    pointer: int = 0
     gci_pointer_mode: bool = False
     patch_mode: bool = False
     current_macro: str = ''
-    mgc_files: dict[Path, list[MGCLine]] = field(default_factory=dict)
-    bin_files: dict[Path, bytes] = field(default_factory=dict)
-    macro_files: dict[str, list[MGCLine]] = field(default_factory=dict)
-    asm_blocks: dict[str, bytes] = field(default_factory=dict)
-    write_table: list[WriteEntry] = field(default_factory=list)
-    patch_table: list[WriteEntry] = field(default_factory=list)
-    block_order: list[int] = field(default_factory=list)
+    mgc_files: dict[Path, list[MGCLine]] = {}
+    bin_files: dict[Path, bytes] = {}
+    macro_files: dict[str, list[MGCLine]] = {}
+    asm_blocks: dict[str, bytes] = {}
+    write_table: list[WriteEntry] = []
+    patch_table: list[WriteEntry] = []
+    block_order: list[int] = []
 
     def copy(self) -> 'CompilerState':
         """Easily creates a shallow copy of this object."""
@@ -67,21 +67,22 @@ class CompilerState:
 def WriteEntryList(data: bytes, state: CompilerState) -> list[WriteEntry]:
     """Creates a list of write entries out of data."""
     if state.gci_pointer_mode:
-        if state.gci_pointer < 0:
+        logger.debug(f"Writing 0x{len(data):x} bytes in gci mode:")
+        if state.pointer < 0:
             raise CompileError("Data pointer must be a positive value")
-        if state.gci_pointer + len(data) > len(state.gci_data):
+        if state.pointer + len(data) > len(state.gci_data):
             raise CompileError("Attempting to write past the end of the GCI")
-        return [WriteEntry(state.gci_pointer, data)]
+        logger.debug(f"        0x{len(data):x} bytes to 0x{state.pointer:x}")
+        return [WriteEntry(state.pointer, data)]
     else:
-        if state.loc_pointer < 0:
+        logger.debug(f"Writing 0x{len(data):x} bytes in loc mode:")
+        if state.pointer < 0:
             raise CompileError("Data pointer must be a positive value")
         try:
-            entries = data2gci(state.loc_pointer, data)
+            entries = data2gci(state.pointer, data)
         except ValueError as e:
             raise CompileError(e)
+        for pointer, data in entries:
+            logger.debug(f"        0x{len(data):x} bytes to 0x{pointer:x}")
         return [WriteEntry(*entry) for entry in entries]
 
-
-@dataclass
-class MGCFile:
-    path: Path

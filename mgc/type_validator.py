@@ -54,7 +54,7 @@ def address(untyped: str) -> int:
     return integer('0x' + untyped)
 
 
-def string(untyped: str) -> str:
+def text(untyped: str) -> str:
     """A string wrapped in quotes."""
     if untyped[0] != '"' or untyped [-1] != '"':
         raise BuildError("Expected a string wrapped in quotes")

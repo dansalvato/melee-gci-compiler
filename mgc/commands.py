@@ -14,7 +14,7 @@ def loc(address: int, state: CompilerState) -> CompilerState:
     """Sets the loc pointer."""
     state.gci_pointer_mode = False
     state.patch_mode = False
-    state.loc_pointer = address
+    state.pointer = address
     return state
 
 
@@ -22,7 +22,7 @@ def gci(address: int, state: CompilerState) -> CompilerState:
     """Sets the gci pointer."""
     state.gci_pointer_mode = True
     state.patch_mode = False
-    state.gci_pointer = address
+    state.pointer = address
     return state
 
 
@@ -30,16 +30,13 @@ def patch(address: int, state: CompilerState) -> CompilerState:
     """Sets the patch pointer."""
     state.gci_pointer_mode = True
     state.patch_mode = True
-    state.gci_pointer = address
+    state.pointer = address
     return state
 
 
 def add(amount: int, state: CompilerState) -> CompilerState:
     """Adds to the currently-active pointer."""
-    if state.gci_pointer_mode:
-        state.gci_pointer += amount
-    else:
-        state.loc_pointer += amount
+    state.pointer += amount
     return state
 
 
@@ -51,6 +48,7 @@ def write(data: bytes, state: CompilerState) -> CompilerState:
     else:
         _check_collisions(state.write_table, entries)
         state.write_table += entries
+        state.pointer += sum([len(entry.data) for entry in entries])
     return state
 
 
@@ -60,8 +58,8 @@ def _check_collisions(old_entries: list[WriteEntry], new_entries: list[WriteEntr
         for prev_entry in old_entries:
             if entry.intersects(prev_entry):
                 logger.warning(f"GCI location 0x{max(prev_entry.address, entry.address):x} "
-                                "was already written to by {prev_entry.context.filepath.name} "
-                                "(Line {prev_entry.context.line_number+1}) and is being overwritten")
+                               f"was already written to by {prev_entry.context.path.name} "
+                               f"(Line {prev_entry.context.line_number+1}) and is being overwritten")
     return
 
 
@@ -79,7 +77,7 @@ def fill(count: int, pattern: bytes, state: CompilerState) -> CompilerState:
 
 def _file(path: str, filetype: Callable[[Path], bytes], state: CompilerState) -> CompilerState:
     """(Base class) Writes a file to the write table."""
-    binpath = Path(path).resolve()
+    binpath = (state.path/Path(path)).resolve()
     if not binpath in state.bin_files:
         state.bin_files[binpath] = filetype(binpath)
     data = state.bin_files[binpath]
@@ -103,10 +101,13 @@ def geckocodelist(path: str, state: CompilerState) -> CompilerState:
 
 def src(path: str, state: CompilerState) -> CompilerState:
     """Sources and compiles an MGC file."""
-    filepath = Path(path).resolve()
+    oldpath = state.path
+    filepath = (state.path/Path(path)).resolve()
     if not filepath in state.mgc_files:
         state.mgc_files[filepath] = files.mgc_file(filepath)
-    compiler.compile_file(filepath, state)
+    state.path = filepath.parent
+    state = compiler.compile_file(filepath, state)
+    state.path = oldpath
     return state
 
 
@@ -127,7 +128,7 @@ def macro(name: str, state: CompilerState) -> CompilerState:
     if state.current_macro:
         raise CompileError("Cannot define a macro inside another macro")
     state.current_macro = name
-    if state.macro_files[name]:
+    if name in state.macro_files:
         logger.warning(f"Macro {name} already exists and is being overwritten")
     state.macro_files[name] = []
     return state

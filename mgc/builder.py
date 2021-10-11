@@ -47,21 +47,27 @@ def build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
 def _preprocess_op_lines(data: list[str], start_line: int, end_line: int, c: Context) -> list[MGCLine]:
     op_lines = []
     open_tag: partial | None = None
+    open_tag_line = 0
     for line_number, script_line in enumerate(data[start_line:end_line], start=start_line):
         if open_tag:
             command = line.parse(script_line, open_tag.func.__name__ + 'end')
             if not command:
                 continue
             # TODO: Compile ASM block
+            asmdata = bytes.fromhex('00abcdef')
+            asmcmd = partial(open_tag.func, asmdata)
+            op_lines.append(MGCLine(open_tag_line, asmcmd))
             open_tag = None
         else:
+            c.line_number = line_number
             command = line.parse(script_line)
             if not command:
                 continue
             if command.func.__name__ in ['asm', 'c2']:
                 open_tag = command
-            c.line_number = line_number
-            op_lines.append(MGCLine(line_number, command))
+                open_tag_line = line_number
+            else:
+                op_lines.append(MGCLine(line_number, command))
     if open_tag:
         raise BuildError("Command does not have an end specified")
     return op_lines

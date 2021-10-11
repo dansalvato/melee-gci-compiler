@@ -11,12 +11,12 @@ class Context:
     other objects can reference context.top() to keep track of what file and
     line number was responsible for that operation."""
 
-    def __init__(self, path: Path, line_number: Optional[int]=None):
+    def __init__(self, path: Path, line_number: int=-1):
         self.path = path
         self.line_number = line_number
 
     def __repr__(self):
-        return f"{self.path.name} line {self.line_number}"
+        return f"{self.path.name} line {self.line_number+1}"
 
     def __enter__(self):
         _context_stack.append(self)
@@ -32,6 +32,8 @@ class Context:
         else:
             _context_stack.pop()
 
+    def copy(self) -> 'Context':
+        return Context(self.path, self.line_number)
 
 _context_stack = []
 EMPTY_CONTEXT = Context(Path())
@@ -45,7 +47,7 @@ def in_stack(path: Path) -> bool:
 
 def top() -> Context:
     """Returns the top context to use for log messages."""
-    return _context_stack[-1]
+    return _context_stack[-1].copy()
 
 
 def root() -> Context:
