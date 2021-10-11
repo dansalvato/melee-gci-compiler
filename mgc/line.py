@@ -64,6 +64,7 @@ def parse(line: str) -> CommandType | None:
 
 
 def _replace_aliases(line: str) -> str:
+    """Replaces aliases with their defined values during parse."""
     for key, value in _aliases.items():
         line.replace(key, value)
     if re.search(r'\[.*\]', line):
@@ -72,6 +73,7 @@ def _replace_aliases(line: str) -> str:
 
 
 def _add_alias(name: str, value: str) -> None:
+    """Adds a new alias during parse if the parsed command is !define."""
     name = '[' + name + ']'
     if name in _aliases:
         logger.warning(f"Alias {name} already exists and is being overwritten")
@@ -79,6 +81,7 @@ def _add_alias(name: str, value: str) -> None:
 
 
 def _get_command(line: str) -> tuple[CommandType, list[CommandArgsType]]:
+    """Gets the command present on the current line during parse."""
     if line[0] in string.hexdigits or line[0] == '%':
         return _COMMANDS['write']
     if line[0] == '+':

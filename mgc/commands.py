@@ -106,8 +106,7 @@ def src(path: str, state: CompilerState) -> CompilerState:
     filepath = Path(path).resolve()
     if not filepath in state.mgc_files:
         state.mgc_files[filepath] = files.mgc_file(filepath)
-    # TODO: Pass state to this
-    compiler._compile_file(filepath)
+    compiler.compile_file(filepath, state)
     return state
 
 
@@ -150,13 +149,13 @@ def blockorder(b0: int, b1: int, b2: int, b3: int, b4: int,
                b5: int, b6: int, b7: int, b8: int, b9: int,
                state: CompilerState) -> CompilerState:
     """Changes the order that blocks get arranged in the GCI file."""
-    _blockorder = [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
-    for b in _blockorder:
+    block_order = [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
+    for b in block_order:
         if b < 0:
             raise CompileError("Block number cannot be negative")
         elif b > 9:
             raise CompileError("Block number cannot be greater than 9")
-    state.block_order = _blockorder
+    state.block_order = block_order
     return state
 
 

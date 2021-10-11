@@ -74,6 +74,8 @@ def compile_file(path: Path, state: CompilerState) -> CompilerState:
         raise CompileError("MGC files are sourcing each other in an infinite loop")
     with Context(path) as c:
         for index, command in enumerate(state.mgc_files[path]):
+            if not command:
+                continue
             c.line_number = index
             if state.current_macro:
                 state.macro_files[state.current_macro].append(command)
@@ -85,6 +87,8 @@ def compile_file(path: Path, state: CompilerState) -> CompilerState:
 def compile_macro(name: str, count: int, state: CompilerState) -> CompilerState:
     for _ in range(count):
         for command in state.macro_files[name]:
+            if not command:
+                continue
             state = command(state.copy())
     return state
 
