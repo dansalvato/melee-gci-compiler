@@ -8,7 +8,7 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
-from typing import Callable, Concatenate, ParamSpec
+from typing import Callable
 from typing import Any
 
 
@@ -30,7 +30,7 @@ class WriteEntry:
                  entry.address + len(entry.data) > self.address))
 
 
-# Used for type hinting to improve readability elsewhere in code
+# Type aliases
 CommandType = Callable[..., 'CompilerState']
 CommandArgsType = Callable[[str], Any]
 
