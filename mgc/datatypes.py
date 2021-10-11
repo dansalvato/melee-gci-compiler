@@ -8,6 +8,7 @@ from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import context
 from .context import Context
+from typing import NamedTuple
 from typing import Callable
 from typing import Any
 
@@ -32,7 +33,14 @@ class WriteEntry:
 
 # Type aliases
 CommandType = Callable[..., 'CompilerState']
-CommandArgsType = Callable[[str], Any]
+
+
+class MGCLine(NamedTuple):
+    """A parsed MGC script line, containing the line number from its original
+    file (for logging) and a command. The command already has all its args
+    in place; it only needs a CompilerState as a parameter when called."""
+    line_number: int
+    command: CommandType
 
 
 class CompilerState:
@@ -45,14 +53,13 @@ class CompilerState:
     asm_open: bool = False
     c2_open: bool = False
     current_macro: str = ''
-    mgc_files: dict[Path, list[CommandType]] = field(default_factory=dict)
+    mgc_files: dict[Path, list[MGCLine]] = field(default_factory=dict)
     bin_files: dict[Path, bytes] = field(default_factory=dict)
-    mgc_stack: list[Path] = field(default_factory=list)
-    write_table: list[WriteEntry] = field(default_factory=list)
-    block_order: list[int] = field(default_factory=list)
-    patch_table: list[WriteEntry] = field(default_factory=list)
-    macro_files: dict[str, list[CommandType]] = field(default_factory=dict)
+    macro_files: dict[str, list[MGCLine]] = field(default_factory=dict)
     asm_blocks: dict[str, bytes] = field(default_factory=dict)
+    write_table: list[WriteEntry] = field(default_factory=list)
+    patch_table: list[WriteEntry] = field(default_factory=list)
+    block_order: list[int] = field(default_factory=list)
 
     def copy(self) -> 'CompilerState':
         """Easily creates a shallow copy of this object."""

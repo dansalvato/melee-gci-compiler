@@ -1,12 +1,9 @@
 """builder.py: A class that stores the data from an MGC file as a list of
 Operations to execute."""
-import re
 from pathlib import Path
 from collections import namedtuple
-from .pyiiasmh import ppctools
 from . import lineparser
 from . import logger
-from . import context
 from .context import Context
 from .errors import *
 from . import asm

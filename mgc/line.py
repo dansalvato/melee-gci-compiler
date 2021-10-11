@@ -3,15 +3,16 @@ import string
 import re
 import shlex
 from functools import partial
+from typing import Callable, Any
 from . import commands as cmd
 from . import type_validator as val
 from . import logger
-from .datatypes import CommandType, CommandArgsType
+from .datatypes import CommandType
 from .errors import BuildError
 
 
 _aliases: dict[str, str] = {}
-_COMMANDS: dict[str, tuple[CommandType, list[CommandArgsType]]] = {
+_COMMANDS: dict[str, tuple[CommandType, list[Callable[[str], Any]]]] = {
     'loc': (cmd.loc, [val.address]),
     'gci': (cmd.gci, [val.address]),
     'patch': (cmd.patch, [val.address]),
