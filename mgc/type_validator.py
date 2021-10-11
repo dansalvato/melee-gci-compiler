@@ -56,5 +56,14 @@ def address(untyped: str) -> int:
 
 def string(untyped: str) -> str:
     """A string wrapped in quotes."""
-    return untyped[1:-1]
+    if untyped[0] != '"' or untyped [-1] != '"':
+        raise BuildError("Expected a string wrapped in quotes")
+    typed = untyped[1:-1]
+    if not typed:
+        raise BuildError("String cannot be empty")
+    return typed
 
+
+def any(untyped: str) -> str:
+    """Unchecked type - any valid string."""
+    return untyped

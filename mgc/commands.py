@@ -10,7 +10,7 @@ from . import files
 from . import compiler
 
 
-def loc(state: CompilerState, address: int) -> CompilerState:
+def loc(address: int, state: CompilerState) -> CompilerState:
     """Sets the loc pointer."""
     state.gci_pointer_mode = False
     state.patch_mode = False
@@ -18,7 +18,7 @@ def loc(state: CompilerState, address: int) -> CompilerState:
     return state
 
 
-def gci(state: CompilerState, address: int) -> CompilerState:
+def gci(address: int, state: CompilerState) -> CompilerState:
     """Sets the gci pointer."""
     state.gci_pointer_mode = True
     state.patch_mode = False
@@ -26,7 +26,7 @@ def gci(state: CompilerState, address: int) -> CompilerState:
     return state
 
 
-def patch(state: CompilerState, address: int) -> CompilerState:
+def patch(address: int, state: CompilerState) -> CompilerState:
     """Sets the patch pointer."""
     state.gci_pointer_mode = True
     state.patch_mode = True
@@ -34,7 +34,7 @@ def patch(state: CompilerState, address: int) -> CompilerState:
     return state
 
 
-def add(state: CompilerState, amount: int) -> CompilerState:
+def add(amount: int, state: CompilerState) -> CompilerState:
     """Adds to the currently-active pointer."""
     if state.gci_pointer_mode:
         state.gci_pointer += amount
@@ -43,7 +43,7 @@ def add(state: CompilerState, amount: int) -> CompilerState:
     return state
 
 
-def write(state: CompilerState, data: bytes) -> CompilerState:
+def write(data: bytes, state: CompilerState) -> CompilerState:
     """(Base class) Writes data to the write table."""
     entries = WriteEntryList(data, state)
     if state.patch_mode:
@@ -65,66 +65,67 @@ def _check_collisions(old_entries: list[WriteEntry], new_entries: list[WriteEntr
     return
 
 
-def string(state: CompilerState, data: str) -> CompilerState:
+def string(data: str, state: CompilerState) -> CompilerState:
     """Writes a string as bytes to the write table. Escape characters are decoded."""
     b = bytes(bytes(data, 'utf-8').decode("unicode_escape"), encoding='ascii')
-    return write(state, b)
+    return write(b, state)
 
 
-def fill(state: CompilerState, count: int, pattern: bytes) -> CompilerState:
+def fill(count: int, pattern: bytes, state: CompilerState) -> CompilerState:
     """Writes a fill pattern to the write table."""
     b = pattern * count
-    return write(state, b)
+    return write(b, state)
 
 
-def _file(state: CompilerState, path: str, filetype: Callable[[Path], bytes]) -> CompilerState:
+def _file(path: str, filetype: Callable[[Path], bytes], state: CompilerState) -> CompilerState:
     """(Base class) Writes a file to the write table."""
     binpath = Path(path).resolve()
     if not binpath in state.bin_files:
         state.bin_files[binpath] = filetype(binpath)
     data = state.bin_files[binpath]
-    return write(state, data)
+    return write(data, state)
 
 
-def bin(state: CompilerState, path: str) -> CompilerState:
+def bin(path: str, state: CompilerState) -> CompilerState:
     """Writes a binary file to the write table."""
-    return _file(state, path, files.bin_file)
+    return _file(path, files.bin_file, state)
 
 
-def asmsrc(state: CompilerState, path: str) -> CompilerState:
+def asmsrc(path: str, state: CompilerState) -> CompilerState:
     """Writes a compiled version of an ASM source file to the write table."""
-    return _file(state, path, files.asm_file)
+    return _file(path, files.asm_file, state)
 
 
-def geckocodelist(state: CompilerState, path: str) -> CompilerState:
+def geckocodelist(path: str, state: CompilerState) -> CompilerState:
     """Writes a Gecko codelist file to the write table."""
-    return _file(state, path, files.gecko_file)
+    return _file(path, files.gecko_file, state)
 
 
-def src(state: CompilerState, path: str) -> CompilerState:
+def src(path: str, state: CompilerState) -> CompilerState:
     """Sources and compiles an MGC file."""
     filepath = Path(path).resolve()
     if not filepath in state.mgc_files:
         state.mgc_files[filepath] = files.mgc_file(filepath)
+    # TODO: Pass state to this
     compiler._compile_file(filepath)
     return state
 
 
-def asm(state: CompilerState, blockid: str) -> CompilerState:
+def asm(blockid: str, state: CompilerState) -> CompilerState:
     """Writes a compiled version of an ASM block to the write table.
     blockid is generated when the ASM is compiled."""
     state.asm_open = True
-    return write(state, state.asm_blocks[blockid])
+    return write(state.asm_blocks[blockid], state)
 
 
-def c2(state: CompilerState, blockid: str) -> CompilerState:
+def c2(blockid: str, state: CompilerState) -> CompilerState:
     """Writes a compiled version of a C2 ASM block to the write table.
     blockid is generated when the ASM is compiled."""
     state.c2_open = True
-    return write(state, state.asm_blocks[blockid])
+    return write(state.asm_blocks[blockid], state)
 
 
-def macro(state: CompilerState, name: str) -> CompilerState:
+def macro(name: str, state: CompilerState) -> CompilerState:
     """Defines a macro and adds all following commands to it until the end tag."""
     if state.current_macro:
         raise CompileError("Cannot define a macro inside another macro")
@@ -135,9 +136,18 @@ def macro(state: CompilerState, name: str) -> CompilerState:
     return state
 
 
-def blockorder(state: CompilerState,
-               b0: int, b1: int, b2: int, b3: int, b4: int,
-               b5: int, b6: int, b7: int, b8: int, b9: int):
+def call_macro(name: str, count: int, state: CompilerState) -> CompilerState:
+    """Calls a macro that was defined earlier."""
+    if state.current_macro:
+        raise CompileError("Cannot call a macro from within another macro""")
+    # TODO: Pass state to this
+    compiler.compile_commands(state.macro_files[state.current_macro], state)
+    return state
+
+
+def blockorder(b0: int, b1: int, b2: int, b3: int, b4: int,
+               b5: int, b6: int, b7: int, b8: int, b9: int,
+               state: CompilerState) -> CompilerState:
     """Changes the order that blocks get arranged in the GCI file."""
     _blockorder = [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
     for b in _blockorder:
@@ -149,7 +159,7 @@ def blockorder(state: CompilerState,
     return state
 
 
-def echo(state: CompilerState, message: str) -> CompilerState:
+def echo(message: str, state: CompilerState) -> CompilerState:
     """Logs a message."""
     logger.info(message)
     return state
@@ -191,5 +201,11 @@ def begin(_: CompilerState) -> CompilerState:
 def end(_: CompilerState) -> CompilerState:
     """Not runnable. Signifies the end of an MGC script."""
     message = "!end is used more than once in this file"
+    raise CompileError(message)
+
+
+def define(_: CompilerState) -> CompilerState:
+    """Unreachable, because aliases are handled in preprocessing."""
+    message = "Preprocessor failed to handle !define"
     raise CompileError(message)
 
