@@ -15,27 +15,27 @@ def _make_tmp_directory():
 
 def compile_asm(asm: str) -> str:
     """Takes ASM and compiles it to hex using pyiiasmh."""
-    c = context.top()
     tmp_dir = _make_tmp_directory()
     txtfile = tmp_dir/"code.txt"
     with open(txtfile, 'w') as f:
         f.write(asm)
-    try:
-        compiled_asm = ppctools.asm_opcodes(tmp_dir)
-    except RuntimeError as e:
-        r = re.search(r'code\.txt\:(\d+)\: Error: (.*?)\\', str(e))
-        if r:
-            asm_line_number = int(r.group(1))
-            error = r.group(2)
-            if c.line_number:
-                c.line_number += asm_line_number
+    with context.top() as c:
+        try:
+            compiled_asm = ppctools.asm_opcodes(tmp_dir)
+        except RuntimeError as e:
+            r = re.search(r'code\.txt\:(\d+)\: Error: (.*?)\\', str(e))
+            if r:
+                asm_line_number = int(r.group(1))
+                error = r.group(2)
+                if c.line_number:
+                    c.line_number += asm_line_number
+                else:
+                    c.line_number = asm_line_number
+                raise BuildError(f"Error compiling ASM: {error}")
             else:
-                c.line_number = asm_line_number
-            raise BuildError(f"Error compiling ASM: {error}")
-        else:
-            raise BuildError(f"Error compiling ASM")
-    except Exception as e:
-        raise BuildError(f"Error compiling ASM: {e}")
+                raise BuildError(f"Error compiling ASM")
+        except Exception as e:
+            raise BuildError(f"Error compiling ASM: {e}")
     return compiled_asm
 
 

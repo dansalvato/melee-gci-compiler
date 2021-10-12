@@ -48,7 +48,7 @@ def write(data: bytes, state: CompilerState) -> CompilerState:
     else:
         _check_collisions(state.write_table, entries)
         state.write_table += entries
-        state.pointer += sum([len(entry.data) for entry in entries])
+    state.pointer += sum([len(entry.data) for entry in entries])
     return state
 
 
@@ -140,7 +140,8 @@ def call_macro(name: str, count: int, state: CompilerState) -> CompilerState:
         raise CompileError("Cannot call a macro from within another macro""")
     if not state.macro_files[name]:
         raise CompileError(f"Macro {name} is undefined")
-    compiler.compile_macro(name, count, state)
+    for _ in range(count):
+        state = compiler.compile_macro(name, state.copy())
     return state
 
 

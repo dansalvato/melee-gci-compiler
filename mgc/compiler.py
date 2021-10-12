@@ -2,12 +2,10 @@
 to the GCI."""
 from pathlib import Path
 from . import logger
-from . import builder
+from . import files
 from . import commands
 from .errors import CompileError
-from .gci_tools.mem2gci import *
 from .gci_tools.meleegci import melee_gamedata
-from .datatypes import WriteEntry
 from .datatypes import CompilerState
 from .context import Context
 from .context import in_stack
@@ -19,6 +17,8 @@ def _init_new_gci() -> melee_gamedata:
     logger.silent_log = True
     state = CompilerState()
     state = commands.src(str(init_gci_path), state.copy())
+    for entry in state.write_table:
+        state.gci_data[entry.address:entry.address+len(entry.data)] = entry.data
     logger.silent_log = silent
     return melee_gamedata(raw_bytes=state.gci_data)
 
@@ -44,23 +44,23 @@ def compile_file(path: Path, state: CompilerState) -> CompilerState:
     with Context(path) as c:
         for line in state.mgc_files[path]:
             c.line_number = line.line_number
-            if state.current_macro:
+            if state.current_macro and line.command.func is not commands.macroend:
                 state.macro_files[state.current_macro].append(line)
             else:
                 state = line.command(state.copy())
+        if state.current_macro:
+            raise CompileError("Macro does not have an end")
     return state
 
 
-def compile_macro(name: str, count: int, state: CompilerState) -> CompilerState:
-    for _ in range(count):
-        for line in state.macro_files[name]:
-            state = line.command(state.copy())
+def compile_macro(name: str, state: CompilerState) -> CompilerState:
+    for line in state.macro_files[name]:
+        state = line.command(state.copy())
     return state
 
 
 def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
     """Main compile routine: Takes a root MGC file path and compiles all data"""
-    global write_history, gci_data, block_order
     logger.silent_log = silent
     logger.debug_log = debug
     state = CompilerState()

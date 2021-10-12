@@ -20,9 +20,6 @@ class WriteEntry:
     data: bytes
     context: Context = field(default_factory=context.top, init=False)
 
-    def __len__(self):
-        return len(self.data)
-
     def intersects(self, entry: 'WriteEntry') -> bool:
         """Tests if two WriteEntries intersect with each other."""
         return ((self.address <= entry.address and
@@ -45,19 +42,21 @@ class MGCLine(NamedTuple):
 
 class CompilerState:
     """Keeps track of the current state of the compiler."""
-    path: Path = Path()
-    gci_data: bytearray = bytearray(0x16040)
-    pointer: int = 0
-    gci_pointer_mode: bool = False
-    patch_mode: bool = False
-    current_macro: str = ''
-    mgc_files: dict[Path, list[MGCLine]] = {}
-    bin_files: dict[Path, bytes] = {}
-    macro_files: dict[str, list[MGCLine]] = {}
-    asm_blocks: dict[str, bytes] = {}
-    write_table: list[WriteEntry] = []
-    patch_table: list[WriteEntry] = []
-    block_order: list[int] = []
+
+    def __init__(self):
+        self.path: Path = Path()
+        self.gci_data: bytearray = bytearray(0x16040)
+        self.pointer: int = 0
+        self.gci_pointer_mode: bool = False
+        self.patch_mode: bool = False
+        self.current_macro: str = ''
+        self.mgc_files: dict[Path, list[MGCLine]] = {}
+        self.bin_files: dict[Path, bytes] = {}
+        self.macro_files: dict[str, list[MGCLine]] = {}
+        self.asm_blocks: dict[str, bytes] = {}
+        self.write_table: list[WriteEntry] = []
+        self.patch_table: list[WriteEntry] = []
+        self.block_order: list[int] = []
 
     def copy(self) -> 'CompilerState':
         """Easily creates a shallow copy of this object."""

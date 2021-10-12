@@ -4,11 +4,9 @@ from pathlib import Path
 from functools import partial
 from . import line
 from . import asm
-from . import commands as cmd
 from .datatypes import MGCLine
-from .datatypes import CommandType
 from .context import Context
-from .errors import *
+from .errors import BuildError
 
 
 def build_binfile(filedata):
@@ -46,18 +44,24 @@ def build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
 
 def _preprocess_op_lines(data: list[str], start_line: int, end_line: int, c: Context) -> list[MGCLine]:
     op_lines = []
+    asm_lines = []
     open_tag: partial | None = None
     open_tag_line = 0
     for line_number, script_line in enumerate(data[start_line:end_line], start=start_line):
         if open_tag:
             command = line.parse(script_line, open_tag.func.__name__ + 'end')
             if not command:
+                asm_lines.append(script_line)
                 continue
-            # TODO: Compile ASM block
-            asmdata = bytes.fromhex('00abcdef')
+            if open_tag.func.__name__ == 'c2':
+                asmhex = asm.compile_c2('\n'.join(asm_lines), open_tag.args[0])
+            else:
+                asmhex = asm.compile_asm('\n'.join(asm_lines))
+            asmdata = bytes.fromhex(asmhex)
             asmcmd = partial(open_tag.func, asmdata)
             op_lines.append(MGCLine(open_tag_line, asmcmd))
             open_tag = None
+            asm_lines.clear()
         else:
             c.line_number = line_number
             command = line.parse(script_line)

@@ -1,7 +1,7 @@
 from pathlib import Path
 from . import logger
 from . import builder
-from .errors import CompileError
+from .errors import BuildError
 
 
 def _read_bin_file(path: Path) -> bytes:
@@ -10,7 +10,7 @@ def _read_bin_file(path: Path) -> bytes:
         with path.open('rb') as f:
             data = f.read()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(path)}")
+        raise BuildError(f"File not found: {str(path)}")
     return data
 
 
@@ -20,9 +20,9 @@ def _read_text_file(path: Path) -> list[str]:
         with path.open('r') as f:
             data = f.readlines()
     except FileNotFoundError:
-        raise CompileError(f"File not found: {str(path)}")
+        raise BuildError(f"File not found: {str(path)}")
     except UnicodeDecodeError:
-        raise CompileError("Unable to read file; make sure it's a text file")
+        raise BuildError("Unable to read file; make sure it's a text file")
     return data
 
 
@@ -52,3 +52,4 @@ def mgc_file(path: Path) -> list:
     logger.info(f"Reading MGC file {path.name}")
     data = _read_text_file(path)
     return builder.build_mgcfile(path, data)
+
