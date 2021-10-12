@@ -21,6 +21,7 @@ _COMMANDS: dict[str, tuple[CommandType, list[Callable[[str], Any]]]] = {
     'src': (cmd.src, [val.text]),
     'asmsrc': (cmd.asmsrc, [val.text]),
     'file': (cmd.bin, [val.text]),
+    'bin': (cmd.bin, [val.text]),
     'geckocodelist':  (cmd.geckocodelist, [val.text]),
     'string': (cmd.string, [val.text]),
     'fill': (cmd.fill, [val.integer, val.data]),

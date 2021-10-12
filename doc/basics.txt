@@ -50,8 +50,10 @@ unique ways.
     Adds the given MGC script file to the build script at that location.
 !asmsrc "path/to/source"
     Compiles and adds the ASM source file to the current location.
-!file "path/to/file"
+!bin "path/to/file"
     Adds the entire binary file directly to Melee memory.
+!file "path/to/file"
+    Deprecated - same as !bin.
 !geckocodelist "path/to/codelist"
     Compiles the Gecko codelist text file, then adds the resulting binary to
     Melee memory. Gecko codelists have their own format that is not covered
