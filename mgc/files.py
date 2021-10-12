@@ -1,7 +1,40 @@
+"""files.py: Loads and builds files when sourced by the MGC script."""
 from pathlib import Path
+from functools import partial
 from . import logger
-from . import builder
+from . import line
+from . import asm
+from .datatypes import MGCLine
+from .context import Context
 from .errors import BuildError
+
+
+def bin_file(path: Path) -> bytes:
+    """A binary file loaded from disk."""
+    logger.info(f"Reading binary file {path.name}")
+    data = _read_bin_file(path)
+    return _build_binfile(data)
+
+
+def asm_file(path: Path) -> bytes:
+    """An ASM file loaded from disk and compiled into binary."""
+    logger.info(f"Reading ASM source file {path.name}")
+    data = _read_text_file(path)
+    return _build_asmfile('\n'.join(data))
+
+
+def gecko_file(path: Path) -> bytes:
+    """A Gecko codelist file loaded from disk and compiled into binary."""
+    logger.info(f"Reading Gecko codelist file {path.name}")
+    data = _read_text_file(path)
+    return _build_geckofile(path, data)
+
+
+def mgc_file(path: Path) -> list:
+    """An MGC file loaded from disk and parsed into a Command list."""
+    logger.info(f"Reading MGC file {path.name}")
+    data = _read_text_file(path)
+    return _build_mgcfile(path, data)
 
 
 def _read_bin_file(path: Path) -> bytes:
@@ -26,30 +59,83 @@ def _read_text_file(path: Path) -> list[str]:
     return data
 
 
-def bin_file(path: Path) -> bytes:
-    """A binary file loaded from disk."""
-    logger.info(f"Reading binary file {path.name}")
-    data = _read_bin_file(path)
-    return builder.build_binfile(data)
+def _build_binfile(filedata: bytes) -> bytes:
+    """Builds a binary file and returns it in bytes."""
+    return filedata
 
 
-def asm_file(path: Path) -> bytes:
-    """An ASM file loaded from disk and compiled into binary."""
-    logger.info(f"Reading ASM source file {path.name}")
-    data = _read_text_file(path)
-    return builder.build_asmfile('\n'.join(data))
+def _build_asmfile(filedata: str) -> bytes:
+    """Builds an ASM file and returns it in bytes."""
+    compiled_asm = asm.compile_asm(filedata)
+    return compiled_asm
 
 
-def gecko_file(path: Path) -> bytes:
-    """A Gecko codelist file loaded from disk and compiled into binary."""
-    logger.info(f"Reading Gecko codelist file {path.name}")
-    data = _read_text_file(path)
-    return builder.build_geckofile(path, data)
+def _build_geckofile(path: Path, data: list[str]):
+    """Builds a file in Gecko codelist format and returns it in bytes."""
+    with Context(path) as c:
+        header = bytes.fromhex('00d0c0de00d0c0de')
+        footer = bytes.fromhex('f000000000000000')
+        bytedata = bytes()
+        for line_number, line in enumerate(data):
+            c.line_number = line_number
+            if line[0] != '*':
+                continue
+            line = line[1:]
+            try:
+                bytedata += bytes.fromhex(line)
+            except ValueError:
+                raise BuildError("Invalid Gecko code line")
+    return header + bytedata + footer
 
 
-def mgc_file(path: Path) -> list:
-    """An MGC file loaded from disk and parsed into a Command list."""
-    logger.info(f"Reading MGC file {path.name}")
-    data = _read_text_file(path)
-    return builder.build_mgcfile(path, data)
+def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
+    """Builds an MGC script file and returns it as a list of commands."""
+    with Context(path) as c:
+        start_line, end_line = _preprocess_begin_end(data)
+        op_lines = []
+        asm_lines = []
+        asm_cmd: partial | None = None
+        asm_cmd_line = 0
+        for line_number, script_line in enumerate(data[start_line:end_line], start=start_line):
+            if asm_cmd:
+                command = line.parse(script_line, asm_cmd.func.__name__ + 'end')
+                if not command:
+                    asm_lines.append(script_line)
+                    continue
+                if asm_cmd.func.__name__ == 'c2':
+                    asmdata = asm.compile_c2('\n'.join(asm_lines), asm_cmd.args[0])
+                else:
+                    asmdata = asm.compile_asm('\n'.join(asm_lines))
+                asmcmd = partial(asm_cmd.func, asmdata)
+                op_lines.append(MGCLine(asm_cmd_line, asmcmd))
+                asm_cmd = None
+                asm_lines.clear()
+            else:
+                c.line_number = line_number
+                command = line.parse(script_line)
+                if not command:
+                    continue
+                if command.func.__name__ in ['asm', 'c2']:
+                    asm_cmd = command
+                    asm_cmd_line = line_number
+                else:
+                    op_lines.append(MGCLine(line_number, command))
+        if asm_cmd:
+            raise BuildError("Command does not have an end specified")
+        return op_lines
+
+
+def _preprocess_begin_end(filedata):
+    """Finds the !begin and !end lines of the MGC file."""
+    start_line = 0
+    end_line = len(filedata)
+    for line_number, script_line in enumerate(filedata):
+        if line.parse(script_line, 'begin'):
+            start_line = line_number+1
+            break
+    for line_number, script_line in enumerate(reversed(filedata)):
+        if line.parse(script_line, 'end'):
+            end_line = len(filedata)-line_number-1
+            break
+    return start_line, end_line
 
