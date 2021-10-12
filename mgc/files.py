@@ -95,19 +95,20 @@ def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
         op_lines = []
         asm_lines = []
         asm_cmd: partial | None = None
-        asm_cmd_line = 0
         for line_number, script_line in enumerate(data[start_line:end_line], start=start_line):
             if asm_cmd:
-                command = line.parse(script_line, asm_cmd.func.__name__ + 'end')
+                name = asm_cmd.func.__name__
+                command = line.parse(script_line, name + 'end')
                 if not command:
                     asm_lines.append(script_line)
                     continue
-                if asm_cmd.func.__name__ == 'c2':
-                    asmdata = asm.compile_c2('\n'.join(asm_lines), asm_cmd.args[0])
+                asmtext = '\n'.join(asm_lines)
+                if name == 'c2':
+                    asmdata = asm.compile_c2(asmtext, asm_cmd.args[0])
                 else:
-                    asmdata = asm.compile_asm('\n'.join(asm_lines))
-                asmcmd = partial(asm_cmd.func, asmdata)
-                op_lines.append(MGCLine(asm_cmd_line, asmcmd))
+                    asmdata = asm.compile_asm(asmtext)
+                asm_cmd = partial(asm_cmd.func, asmdata)
+                op_lines.append(MGCLine(c.line_number, asm_cmd))
                 asm_cmd = None
                 asm_lines.clear()
             else:
@@ -117,7 +118,6 @@ def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
                     continue
                 if command.func.__name__ in ['asm', 'c2']:
                     asm_cmd = command
-                    asm_cmd_line = line_number
                 else:
                     op_lines.append(MGCLine(line_number, command))
         if asm_cmd:
