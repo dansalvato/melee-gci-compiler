@@ -51,5 +51,8 @@ def top() -> Context:
 
 def root() -> Context:
     """Returns the root context."""
-    return _context_stack[0]
+    if len(_context_stack) > 1:
+        return _context_stack[1]
+    else:
+        return _context_stack[0]
 
