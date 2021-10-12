@@ -112,14 +112,12 @@ def src(path: str, state: CompilerState) -> CompilerState:
 
 
 def asm(data: bytes, state: CompilerState) -> CompilerState:
-    """Writes a compiled version of an ASM block to the write table.
-    blockid is generated when the ASM is compiled."""
+    """Writes a compiled version of an ASM block to the write table."""
     return write(data, state)
 
 
 def c2(data: bytes, state: CompilerState) -> CompilerState:
-    """Writes a compiled version of a C2 ASM block to the write table.
-    blockid is generated when the ASM is compiled."""
+    """Writes a compiled version of a C2 ASM block to the write table."""
     return write(data, state)
 
 
