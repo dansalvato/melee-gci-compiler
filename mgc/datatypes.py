@@ -45,7 +45,6 @@ class CompilerState:
 
     def __init__(self):
         self.path: Path = Path()
-        self.gci_data: bytearray = bytearray(0x16040)
         self.pointer: int = 0
         self.gci_pointer_mode: bool = False
         self.patch_mode: bool = False
@@ -69,7 +68,7 @@ def WriteEntryList(data: bytes, state: CompilerState) -> list[WriteEntry]:
         logger.debug(f"Writing 0x{len(data):x} bytes in gci mode:")
         if state.pointer < 0:
             raise CompileError("Data pointer must be a positive value")
-        if state.pointer + len(data) > len(state.gci_data):
+        if state.pointer + len(data) > 0x16040:
             raise CompileError("Attempting to write past the end of the GCI")
         logger.debug(f"        0x{len(data):x} bytes to 0x{state.pointer:x}")
         return [WriteEntry(state.pointer, data)]

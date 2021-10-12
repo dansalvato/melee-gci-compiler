@@ -17,10 +17,11 @@ def _init_new_gci() -> melee_gamedata:
     logger.silent_log = True
     state = CompilerState()
     state = commands.src(str(init_gci_path), state.copy())
+    gci_data = bytearray(0x16040)
     for entry in state.write_table:
-        state.gci_data[entry.address:entry.address+len(entry.data)] = entry.data
+        gci_data[entry.address:entry.address+len(entry.data)] = entry.data
     logger.silent_log = silent
-    return melee_gamedata(raw_bytes=state.gci_data)
+    return melee_gamedata(raw_bytes=gci_data)
 
 
 def _load_gci(gci_path: str) -> melee_gamedata:
