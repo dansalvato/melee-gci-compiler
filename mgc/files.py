@@ -37,7 +37,7 @@ def asm_file(path: Path) -> bytes:
     """An ASM file loaded from disk and compiled into binary."""
     logger.info(f"Reading ASM source file {path.name}")
     data = _read_text_file(path)
-    return builder.build_asmfile(data)
+    return builder.build_asmfile('\n'.join(data))
 
 
 def gecko_file(path: Path) -> bytes:

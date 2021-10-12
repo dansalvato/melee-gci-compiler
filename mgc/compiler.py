@@ -12,6 +12,7 @@ from .context import in_stack
 
 
 def _init_new_gci() -> melee_gamedata:
+    """Creates a new gamedata object from the init_gci MGC script."""
     init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
     silent = logger.silent_log
     logger.silent_log = True
@@ -25,6 +26,7 @@ def _init_new_gci() -> melee_gamedata:
 
 
 def _load_gci(gci_path: str) -> melee_gamedata:
+    """Creates a gamedata object by loading an existing GCI file."""
     try:
         input_gci = melee_gamedata(filename=gci_path, packed=True)
     except FileNotFoundError:
@@ -40,6 +42,7 @@ def _load_gci(gci_path: str) -> melee_gamedata:
 
 
 def compile_file(path: Path, state: CompilerState) -> CompilerState:
+    """Compiles an MGC file requested by the !src command."""
     if in_stack(path):
         raise CompileError("MGC files are sourcing each other in an infinite loop")
     with Context(path) as c:
@@ -55,13 +58,15 @@ def compile_file(path: Path, state: CompilerState) -> CompilerState:
 
 
 def compile_macro(name: str, state: CompilerState) -> CompilerState:
+    """Compiles a macro block requested by the call_macro command."""
     for line in state.macro_files[name]:
         state = line.command(state.copy())
     return state
 
 
-def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
-    """Main compile routine: Takes a root MGC file path and compiles all data"""
+def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
+    """Begins compilation by taking a root MGC path and parameters, then
+    returns the raw bytes of the final GCI."""
     logger.silent_log = silent
     logger.debug_log = debug
     state = CompilerState()

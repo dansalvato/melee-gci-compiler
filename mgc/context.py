@@ -1,14 +1,12 @@
-from dataclasses import dataclass
+"""context.py: A class and context stack that keeps track of the current file
+and line number. Used for logging and detecting circular imports."""
 from pathlib import Path
 
 
-@dataclass
 class Context:
     """A file and line number responsible for the current operation.
-    Usually, a new context is created before performing operations on a file,
-    and done() is called once the operations are finished. Exceptions and
-    other objects can reference context.top() to keep track of what file and
-    line number was responsible for that operation."""
+    Contexts can be created using the with statement, and the line number can
+    be updated as the relevant file is traversed."""
 
     def __init__(self, path: Path, line_number: int=-1):
         self.path = path
@@ -34,9 +32,9 @@ class Context:
     def copy(self) -> 'Context':
         return Context(self.path, self.line_number)
 
-_context_stack = []
+
 EMPTY_CONTEXT = Context(Path())
-_context_stack.append(EMPTY_CONTEXT)
+_context_stack = [EMPTY_CONTEXT]
 
 
 def in_stack(path: Path) -> bool:

@@ -1,3 +1,4 @@
+"""asm.py: Compiles ASM using pyiiasmh."""
 import re
 from .pyiiasmh import ppctools
 from .errors import BuildError
@@ -13,8 +14,7 @@ def _make_tmp_directory():
     return tmp_directory
 
 
-def compile_asm(asm: str) -> str:
-    """Takes ASM and compiles it to hex using pyiiasmh."""
+def _compile(asm: str) -> str:
     tmp_dir = _make_tmp_directory()
     txtfile = tmp_dir/"code.txt"
     with open(txtfile, 'w') as f:
@@ -39,12 +39,17 @@ def compile_asm(asm: str) -> str:
     return compiled_asm
 
 
-def compile_c2(asm: str, c2_ba: int) -> str:
+def compile_asm(asm: str) -> bytes:
+    """Takes ASM and compiles it to hex using pyiiasmh."""
+    return bytes.fromhex(_compile(asm))
+
+
+def compile_c2(asm: str, c2_ba: int) -> bytes:
     """Takes ASM and compiles it into a C2 code using pyiiasmh."""
-    compiled_asm = compile_asm(asm)
+    compiled_asm = _compile(asm)
     c2_ba_str = "%08x" % c2_ba
     try:
         compiled_c2 = ppctools.construct_code(compiled_asm, bapo=c2_ba_str, ctype='C2D2')
     except Exception as e:
         raise BuildError(f"Error compiling ASM: {e}")
-    return compiled_c2
+    return bytes.fromhex(compiled_c2)
