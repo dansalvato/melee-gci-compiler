@@ -65,27 +65,21 @@ def compile(root_mgc_path: str=None, input_gci_path: str=None, silent=False, deb
     logger.silent_log = silent
     logger.debug_log = debug
     state = CompilerState()
-    # Init GCI
     if input_gci_path:
         logger.info("Loading and unpacking input GCI")
         input_gci = _load_gci(input_gci_path)
     else:
         logger.info("Initializing new GCI")
         input_gci = _init_new_gci()
-    # Compile MGC file
     if root_mgc_path:
         state = commands.src(root_mgc_path, state.copy())
-    # Write table
     for entry in state.write_table:
         input_gci.raw_bytes[entry.address:entry.address+len(entry.data)] = entry.data
-    # Reorder blocks
     if state.block_order:
         input_gci.block_order = state.block_order
         input_gci.reorder_blocks()
-    # Write patch table
     for entry in state.patch_table:
         input_gci.raw_bytes[entry.address:entry.address+len(entry.data)] = entry.data
-    # Checksum and pack
     input_gci.recompute_checksums()
     if not nopack:
         logger.info("Packing GCI")
