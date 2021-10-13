@@ -7,6 +7,8 @@ from .errors import BuildError
 
 
 def validate(cmdname: str, args: list[str]) -> list:
+    """Validates the arguments of a given command and returns them as typed
+    args."""
     validators = _COMMANDS[cmdname]
     if len(args) != len(validators):
         raise BuildError(f"Expected {len(validators)} args but received {len(args)}")
@@ -14,7 +16,7 @@ def validate(cmdname: str, args: list[str]) -> list:
     return typed_args
 
 
-def data(untyped: str) -> bytes:
+def _data(untyped: str) -> bytes:
     """Raw data, either hex (ff) or binary (%11111111)."""
     if untyped[0] in string.hexdigits:
         return _hex_string(untyped)
@@ -45,7 +47,7 @@ def _binary_string(untyped: str) -> bytes:
     return bytes.fromhex(h)
 
 
-def integer(untyped: str) -> int:
+def _integer(untyped: str) -> int:
     """An integer in decimal (19) or hex (0x13) notation. Used when calling macros."""
     try:
         if untyped[:2] == '0x':
@@ -56,13 +58,13 @@ def integer(untyped: str) -> int:
         raise BuildError("Invalid integer format")
 
 
-def address(untyped: str) -> int:
+def _address(untyped: str) -> int:
     """An integer in pure hex format, without 0x notation. Used for commands
     with memory addresses."""
-    return integer('0x' + untyped)
+    return _integer('0x' + untyped)
 
 
-def text(untyped: str) -> str:
+def _text(untyped: str) -> str:
     """A string wrapped in quotes."""
     if untyped[0] != '"' or untyped [-1] != '"':
         raise BuildError("Expected a string wrapped in quotes")
@@ -72,35 +74,35 @@ def text(untyped: str) -> str:
     return typed
 
 
-def any(untyped: str) -> str:
+def _any(untyped: str) -> str:
     """Unchecked type - any valid string."""
     return untyped
 
 
 _COMMANDS: dict[str, list[Callable]] = {
-    'loc': [address],
-    'gci': [address],
-    'patch': [address],
-    'add': [address],
-    'write': [data],
-    'src': [text],
-    'asmsrc': [text],
-    'file': [text],
-    'bin': [text],
-    'geckocodelist': [text],
-    'string': [text],
-    'fill': [integer, data],
+    'loc': [_address],
+    'gci': [_address],
+    'patch': [_address],
+    'add': [_address],
+    'write': [_data],
+    'src': [_text],
+    'asmsrc': [_text],
+    'file': [_text],
+    'bin': [_text],
+    'geckocodelist': [_text],
+    'string': [_text],
+    'fill': [_integer, _data],
     'asm': [],
     'asmend': [],
-    'c2': [address],
+    'c2': [_address],
     'c2end': [],
     'begin': [],
     'end': [],
-    'echo': [text],
-    'macro': [any],
+    'echo': [_text],
+    'macro': [_any],
     'macroend': [],
-    'callmacro': [any, integer],
-    'blockorder': [integer] * 10,
-    'define': [any, text]
+    'callmacro': [_any, _integer],
+    'blockorder': [_integer] * 10,
+    'define': [_any, _text]
     }
 
