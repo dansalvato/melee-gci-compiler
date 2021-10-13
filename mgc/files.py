@@ -12,7 +12,7 @@ def bin_file(path: Path) -> bytes:
     """A binary file loaded from disk."""
     logger.info(f"Reading binary file {path.name}")
     data = _read_bin_file(path)
-    return _build_binfile(data)
+    return data
 
 
 def asm_file(path: Path) -> bytes:
@@ -56,11 +56,6 @@ def _read_text_file(path: Path) -> list[str]:
     except UnicodeDecodeError:
         raise BuildError("Unable to read file; make sure it's a text file")
     return data
-
-
-def _build_binfile(filedata: bytes) -> bytes:
-    """Builds a binary file and returns it in bytes."""
-    return filedata
 
 
 def _build_asmfile(filedata: str) -> bytes:
