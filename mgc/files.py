@@ -106,8 +106,7 @@ def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
                     asmdata = asm.compile_c2(asmtext, asm_args[0])
                 else:
                     asmdata = asm.compile_asm(asmtext)
-                asm_args.append(asmdata)
-                op_lines.append(MGCLine(c.line_number, asm_cmd, asm_args))
+                op_lines.append(MGCLine(c.line_number, asm_cmd, [asmdata]))
                 asm_cmd = ''
                 asm_args = []
                 asm_lines.clear()
@@ -118,6 +117,7 @@ def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
                     continue
                 if command in ['asm', 'c2']:
                     asm_cmd = command
+                    asm_args = args
                 else:
                     op_lines.append(MGCLine(line_number, command, args))
         if asm_cmd:
