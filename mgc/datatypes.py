@@ -47,7 +47,6 @@ class CompilerState:
         self.mgc_files: dict[Path, list[MGCLine]] = {}
         self.bin_files: dict[Path, bytes] = {}
         self.macro_files: dict[str, list[MGCLine]] = {}
-        self.asm_blocks: dict[str, bytes] = {}
         self.write_table: list[WriteEntry] = []
         self.patch_table: list[WriteEntry] = []
         self.block_order: list[int] = []
