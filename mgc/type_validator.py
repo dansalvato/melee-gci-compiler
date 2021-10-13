@@ -1,9 +1,17 @@
 """type_validator.py: Validates types from an MGC script line to ensure they
 are the expected types for that command, and returns them as typed objects."""
-
 import string
 import re
+from typing import Callable
 from .errors import BuildError
+
+
+def validate(cmdname: str, args: list[str]) -> list:
+    validators = _COMMANDS[cmdname]
+    if len(args) != len(validators):
+        raise BuildError(f"Expected {len(validators)} args but received {len(args)}")
+    typed_args = [val(arg) for val, arg in zip(validators, args)]
+    return typed_args
 
 
 def data(untyped: str) -> bytes:
@@ -67,3 +75,32 @@ def text(untyped: str) -> str:
 def any(untyped: str) -> str:
     """Unchecked type - any valid string."""
     return untyped
+
+
+_COMMANDS: dict[str, list[Callable]] = {
+    'loc': [address],
+    'gci': [address],
+    'patch': [address],
+    'add': [address],
+    'write': [data],
+    'src': [text],
+    'asmsrc': [text],
+    'file': [text],
+    'bin': [text],
+    'geckocodelist': [text],
+    'string': [text],
+    'fill': [integer, data],
+    'asm': [],
+    'asmend': [],
+    'c2': [address],
+    'c2end': [],
+    'begin': [],
+    'end': [],
+    'echo': [text],
+    'macro': [any],
+    'macroend': [],
+    'callmacro': [any, integer],
+    'blockorder': [integer] * 10,
+    'define': [any, text]
+    }
+

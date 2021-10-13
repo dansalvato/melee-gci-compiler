@@ -2,15 +2,13 @@
 
 from copy import copy
 from pathlib import Path
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from .errors import CompileError
 from .gci_tools.mem2gci import *
 from . import logger
 from . import context
 from .context import Context
 from typing import NamedTuple
-from typing import Callable
 
 
 @dataclass
@@ -28,16 +26,13 @@ class WriteEntry:
                  entry.address + len(entry.data) > self.address))
 
 
-# Type aliases
-CommandType = Callable[..., 'CompilerState']
-
-
 class MGCLine(NamedTuple):
     """A parsed MGC script line, containing the line number from its original
     file (for logging) and a command. The command already has all its args
     in place; it only needs a CompilerState as a parameter when called."""
     line_number: int
-    command: CommandType
+    command: str
+    args: list
 
 
 class CompilerState:
@@ -79,7 +74,7 @@ def WriteEntryList(data: bytes, state: CompilerState) -> list[WriteEntry]:
         try:
             entries = data2gci(state.pointer, data)
         except ValueError as e:
-            raise CompileError(e)
+            raise CompileError(e.args[0])
         for pointer, data in entries:
             logger.debug(f"        0x{len(data):x} bytes to 0x{pointer:x}")
         return [WriteEntry(*entry) for entry in entries]

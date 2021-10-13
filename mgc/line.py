@@ -2,72 +2,44 @@
 import string
 import re
 import shlex
-from functools import partial
-from typing import Callable, Any, Optional
-from . import commands as cmd
-from . import type_validator as val
+from .type_validator import validate
 from . import logger
-from .datatypes import CommandType
 from .errors import BuildError
 
 
 _aliases: dict[str, str] = {}
-_COMMANDS: dict[str, tuple[CommandType, list[Callable[[str], Any]]]] = {
-    'loc': (cmd.loc, [val.address]),
-    'gci': (cmd.gci, [val.address]),
-    'patch': (cmd.patch, [val.address]),
-    'add': (cmd.add, [val.address]),
-    'write': (cmd.write, [val.data]),
-    'src': (cmd.src, [val.text]),
-    'asmsrc': (cmd.asmsrc, [val.text]),
-    'file': (cmd.bin, [val.text]),
-    'bin': (cmd.bin, [val.text]),
-    'geckocodelist':  (cmd.geckocodelist, [val.text]),
-    'string': (cmd.string, [val.text]),
-    'fill': (cmd.fill, [val.integer, val.data]),
-    'asm': (cmd.asm, []),
-    'asmend': (cmd.asmend, []),
-    'c2': (cmd.c2, [val.address]),
-    'c2end': (cmd.c2end, []),
-    'begin': (cmd.begin, []),
-    'end': (cmd.end, []),
-    'echo': (cmd.echo, [val.text]),
-    'macro': (cmd.macro, [val.any]),
-    'macroend': (cmd.macroend, []),
-    'callmacro': (cmd.call_macro, [val.any, val.integer]),
-    'blockorder': (cmd.blockorder, [val.integer] * 10),
-    'define': (cmd.define, [val.any, val.text])
-    }
+_NOP = ('', [])
 
-
-def parse(line: str, desired_command: str=None) -> Optional[CommandType]:
+def parse(line: str, desired_command: str='') -> tuple[str, list]:
     """Parses the MGC script line string into a command and arguments."""
     line = line.split('#')[0]
     line = _replace_aliases(line)
     line = line.strip()
     if not line:
-        return None
+        return _NOP
     cmdname = _get_command(line)
     if desired_command and cmdname != desired_command:
-        return None
-    if cmdname not in _COMMANDS or cmdname is None:
+        return _NOP
+    if not cmdname:
         raise BuildError("Invalid syntax")
-    cmdtype, validators = _COMMANDS[cmdname]
-    if cmdtype is cmd.write:
+    if cmdname == 'write':
         args = [line]
-    elif cmdtype is cmd.call_macro:
+    elif cmdname == 'callmacro':
         args = line[1:].split()
         if len(args) == 1:
             args.append('1')
     else:
         args = shlex.split(line, posix=False)[1:]
-    if len(args) != len(validators):
-        raise BuildError(f"Expected {len(validators)} args but received {len(args)}")
-    typed_args = [val(arg) for val, arg in zip(validators, args)]
-    if cmdtype is cmd.define:
+    typed_args = validate(cmdname, args)
+    if cmdname == 'define':
         _add_alias(typed_args[0], typed_args[1])
-        return None
-    return partial(cmdtype, *typed_args)
+        return _NOP
+    return cmdname, typed_args
+
+
+def is_command(line: str, desired_command: str) -> bool:
+    """Checks if the given line contains the desired command."""
+    return parse(line, desired_command) is not _NOP
 
 
 def _replace_aliases(line: str) -> str:
@@ -87,7 +59,7 @@ def _add_alias(name: str, value: str) -> None:
     _aliases[name] = value
 
 
-def _get_command(line: str) -> Optional[str]:
+def _get_command(line: str) -> str:
     """Gets the command name present on the current line during parse."""
     if line[0] in string.hexdigits or line[0] == '%':
         return 'write'
@@ -95,5 +67,5 @@ def _get_command(line: str) -> Optional[str]:
         return 'callmacro'
     if line[0] == '!':
         return line.split()[0][1:]
-    return None
+    return ''
 

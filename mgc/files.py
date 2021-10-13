@@ -91,35 +91,35 @@ def _build_geckofile(path: Path, data: list[str]):
 def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
     """Builds an MGC script file and returns it as a list of commands."""
     with Context(path) as c:
-        start_line, end_line = _preprocess_begin_end(data)
+        start, end = _preprocess_begin_end(data)
         op_lines = []
         asm_lines = []
-        asm_cmd: partial | None = None
-        for line_number, script_line in enumerate(data[start_line:end_line], start=start_line):
+        asm_cmd = ''
+        asm_args = []
+        for line_number, script_line in enumerate(data[start:end], start=start):
             if asm_cmd:
-                name = asm_cmd.func.__name__
-                command = line.parse(script_line, name + 'end')
-                if not command:
+                if not line.is_command(script_line, asm_cmd + 'end'):
                     asm_lines.append(script_line)
                     continue
                 asmtext = '\n'.join(asm_lines)
-                if name == 'c2':
-                    asmdata = asm.compile_c2(asmtext, asm_cmd.args[0])
+                if asm_cmd == 'c2':
+                    asmdata = asm.compile_c2(asmtext, asm_args[0])
                 else:
                     asmdata = asm.compile_asm(asmtext)
-                asm_cmd = partial(asm_cmd.func, asmdata)
-                op_lines.append(MGCLine(c.line_number, asm_cmd))
-                asm_cmd = None
+                asm_args.append(asmdata)
+                op_lines.append(MGCLine(c.line_number, asm_cmd, asm_args))
+                asm_cmd = ''
+                asm_args = []
                 asm_lines.clear()
             else:
                 c.line_number = line_number
-                command = line.parse(script_line)
+                command, args = line.parse(script_line)
                 if not command:
                     continue
-                if command.func.__name__ in ['asm', 'c2']:
+                if command in ['asm', 'c2']:
                     asm_cmd = command
                 else:
-                    op_lines.append(MGCLine(line_number, command))
+                    op_lines.append(MGCLine(line_number, command, args))
         if asm_cmd:
             raise BuildError("Command does not have an end specified")
         return op_lines
@@ -130,11 +130,11 @@ def _preprocess_begin_end(filedata):
     start_line = 0
     end_line = len(filedata)
     for line_number, script_line in enumerate(filedata):
-        if line.parse(script_line, 'begin'):
+        if line.is_command(script_line, 'begin'):
             start_line = line_number+1
             break
     for line_number, script_line in enumerate(reversed(filedata)):
-        if line.parse(script_line, 'end'):
+        if line.is_command(script_line, 'end'):
             end_line = len(filedata)-line_number-1
             break
     return start_line, end_line

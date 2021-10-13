@@ -2,13 +2,10 @@
 to the GCI."""
 from pathlib import Path
 from . import logger
-from . import files
-from . import commands
+from .commands import src
 from .errors import CompileError
 from .gci_tools.meleegci import melee_gamedata
 from .datatypes import CompilerState
-from .context import Context
-from .context import in_stack
 
 
 def _init_new_gci() -> melee_gamedata:
@@ -17,7 +14,7 @@ def _init_new_gci() -> melee_gamedata:
     silent = logger.silent_log
     logger.silent_log = True
     state = CompilerState()
-    state = commands.src(str(init_gci_path), state.copy())
+    state = src(str(init_gci_path), state.copy())
     gci_data = bytearray(0x16040)
     for entry in state.write_table:
         gci_data[entry.address:entry.address+len(entry.data)] = entry.data
@@ -41,29 +38,6 @@ def _load_gci(gci_path: str) -> melee_gamedata:
     return input_gci
 
 
-def compile_file(path: Path, state: CompilerState) -> CompilerState:
-    """Compiles an MGC file requested by the !src command."""
-    if in_stack(path):
-        raise CompileError("MGC files are sourcing each other in an infinite loop")
-    with Context(path) as c:
-        for line in state.mgc_files[path]:
-            c.line_number = line.line_number
-            if state.current_macro and line.command.func is not commands.macroend:
-                state.macro_files[state.current_macro].append(line)
-            else:
-                state = line.command(state.copy())
-        if state.current_macro:
-            raise CompileError("Macro does not have an end")
-    return state
-
-
-def compile_macro(name: str, state: CompilerState) -> CompilerState:
-    """Compiles a macro block requested by the call_macro command."""
-    for line in state.macro_files[name]:
-        state = line.command(state.copy())
-    return state
-
-
 def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
     """Begins compilation by taking a root MGC path and parameters, then
     returns the raw bytes of the final GCI."""
@@ -77,7 +51,7 @@ def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=
         logger.info("Initializing new GCI")
         input_gci = _init_new_gci()
     if root_mgc_path:
-        state = commands.src(root_mgc_path, state.copy())
+        state = src(root_mgc_path, state.copy())
     for entry in state.write_table:
         input_gci.raw_bytes[entry.address:entry.address+len(entry.data)] = entry.data
     if state.block_order:

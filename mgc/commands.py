@@ -2,12 +2,13 @@
 commands take the current compiler state and modify or add data to it."""
 from typing import Callable
 from pathlib import Path
+from . import logger
+from .files import asm_file, bin_file, gecko_file, mgc_file
 from .datatypes import CompilerState
 from .datatypes import WriteEntry, WriteEntryList
 from .errors import CompileError
-from . import logger
-from . import files
-from . import compiler
+from .context import Context
+from .context import in_stack
 
 
 def loc(address: int, state: CompilerState) -> CompilerState:
@@ -86,17 +87,17 @@ def _file(path: str, filetype: Callable[[Path], bytes], state: CompilerState) ->
 
 def bin(path: str, state: CompilerState) -> CompilerState:
     """Writes a binary file to the write table."""
-    return _file(path, files.bin_file, state)
+    return _file(path, bin_file, state)
 
 
 def asmsrc(path: str, state: CompilerState) -> CompilerState:
     """Writes a compiled version of an ASM source file to the write table."""
-    return _file(path, files.asm_file, state)
+    return _file(path, asm_file, state)
 
 
 def geckocodelist(path: str, state: CompilerState) -> CompilerState:
     """Writes a Gecko codelist file to the write table."""
-    return _file(path, files.gecko_file, state)
+    return _file(path, gecko_file, state)
 
 
 def src(path: str, state: CompilerState) -> CompilerState:
@@ -104,10 +105,27 @@ def src(path: str, state: CompilerState) -> CompilerState:
     oldpath = state.path
     filepath = (state.path/Path(path)).resolve()
     if not filepath in state.mgc_files:
-        state.mgc_files[filepath] = files.mgc_file(filepath)
+        state.mgc_files[filepath] = mgc_file(filepath)
     state.path = filepath.parent
-    state = compiler.compile_file(filepath, state)
+    state = _compile_file(filepath, state)
     state.path = oldpath
+    return state
+
+
+def _compile_file(path: Path, state: CompilerState) -> CompilerState:
+    """Compiles an MGC file requested by the !src command."""
+    if in_stack(path):
+        raise CompileError("MGC files are sourcing each other in an infinite loop")
+    with Context(path) as c:
+        for line in state.mgc_files[path]:
+            c.line_number = line.line_number
+            func = _FUNCS[line.command]
+            if state.current_macro and func is not macroend:
+                state.macro_files[state.current_macro].append(line)
+            else:
+                state = func(*line.args, state.copy())
+        if state.current_macro:
+            raise CompileError("Macro does not have an end")
     return state
 
 
@@ -132,14 +150,16 @@ def macro(name: str, state: CompilerState) -> CompilerState:
     return state
 
 
-def call_macro(name: str, count: int, state: CompilerState) -> CompilerState:
-    """Calls a macro that was defined earlier."""
+def callmacro(name: str, count: int, state: CompilerState) -> CompilerState:
+    """Calls and runs a macro that was defined earlier."""
     if state.current_macro:
         raise CompileError("Cannot call a macro from within another macro""")
     if not state.macro_files[name]:
         raise CompileError(f"Macro {name} is undefined")
     for _ in range(count):
-        state = compiler.compile_macro(name, state.copy())
+        for line in state.macro_files[name]:
+            func = _FUNCS[line.command]
+            state = func(*line.args, state.copy())
     return state
 
 
@@ -200,4 +220,32 @@ def define(_: CompilerState) -> CompilerState:
     """Unreachable, because aliases are handled in preprocessing."""
     message = "Preprocessor failed to handle !define"
     raise CompileError(message)
+
+
+_FUNCS: dict[str, Callable] = {
+    'loc': loc,
+    'gci': gci,
+    'patch': patch,
+    'add': add,
+    'write': write,
+    'src': src,
+    'asmsrc': asmsrc,
+    'file': bin,
+    'bin': bin,
+    'geckocodelist': geckocodelist,
+    'string': string,
+    'fill': fill,
+    'asm': asm,
+    'asmend': asmend,
+    'c2': c2,
+    'c2end': c2end,
+    'begin': begin,
+    'end': end,
+    'echo': echo,
+    'macro': macro,
+    'macroend': macroend,
+    'callmacro': callmacro,
+    'blockorder': blockorder,
+    'define': define
+    }
 
