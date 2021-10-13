@@ -55,12 +55,12 @@ def write(data: bytes, state: CompilerState) -> CompilerState:
 
 def _check_collisions(old_entries: list[WriteEntry], new_entries: list[WriteEntry]) -> None:
     """Checks for and warns about collisions in the write table."""
-    for entry in new_entries:
-        for prev_entry in old_entries:
-            if entry.intersects(prev_entry):
-                logger.warning(f"GCI location 0x{max(prev_entry.address, entry.address):x} "
-                               f"was already written to by {prev_entry.context.path.name} "
-                               f"(Line {prev_entry.context.line_number+1}) and is being overwritten")
+    for curr in new_entries:
+        for prev in old_entries:
+            if curr.intersects(prev):
+                logger.warning(f"GCI location 0x{max(prev.address, curr.address):x} "
+                               f"was already written to by {prev.context.path.name} "
+                               f"(Line {prev.context.line_number+1}) and is being overwritten")
     return
 
 
@@ -79,7 +79,7 @@ def fill(count: int, pattern: bytes, state: CompilerState) -> CompilerState:
 def _file(path: str, filetype: Callable[[Path], bytes], state: CompilerState) -> CompilerState:
     """(Base class) Writes a file to the write table."""
     binpath = (state.path/Path(path)).resolve()
-    if not binpath in state.bin_files:
+    if binpath not in state.bin_files:
         state.bin_files[binpath] = filetype(binpath)
     data = state.bin_files[binpath]
     return write(data, state)
@@ -104,7 +104,7 @@ def src(path: str, state: CompilerState) -> CompilerState:
     """Sources and compiles an MGC file."""
     oldpath = state.path
     filepath = (state.path/Path(path)).resolve()
-    if not filepath in state.mgc_files:
+    if filepath not in state.mgc_files:
         state.mgc_files[filepath] = mgc_file(filepath)
     state.path = filepath.parent
     state = _compile_file(filepath, state)
@@ -154,7 +154,7 @@ def callmacro(name: str, count: int, state: CompilerState) -> CompilerState:
     """Calls and runs a macro that was defined earlier."""
     if state.current_macro:
         raise CompileError("Cannot call a macro from within another macro""")
-    if not state.macro_files[name]:
+    if name not in state.macro_files:
         raise CompileError(f"Macro {name} is undefined")
     for _ in range(count):
         for line in state.macro_files[name]:

@@ -1,6 +1,5 @@
 """files.py: Loads and builds files when sourced by the MGC script."""
 from pathlib import Path
-from functools import partial
 from . import logger
 from . import line
 from . import asm

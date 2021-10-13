@@ -48,14 +48,15 @@ def _binary_string(untyped: str) -> bytes:
 
 
 def _integer(untyped: str) -> int:
-    """An integer in decimal (19) or hex (0x13) notation. Used when calling macros."""
+    """An integer in decimal (eg. 19) or hex (eg. 0x13) notation. Used when
+    calling macros."""
     try:
         if untyped[:2] == '0x':
             return int(untyped, 16)
         else:
             return int(untyped)
     except ValueError:
-        raise BuildError("Invalid integer format")
+        raise BuildError("Invalid number formatting")
 
 
 def _address(untyped: str) -> int:
@@ -66,7 +67,7 @@ def _address(untyped: str) -> int:
 
 def _text(untyped: str) -> str:
     """A string wrapped in quotes."""
-    if untyped[0] != '"' or untyped [-1] != '"':
+    if len(untyped) < 2 or untyped[0] != '"' or untyped [-1] != '"':
         raise BuildError("Expected a string wrapped in quotes")
     typed = untyped[1:-1]
     if not typed:
