@@ -53,3 +53,4 @@ def compile_c2(asm: str, c2_ba: int) -> bytes:
     except Exception as e:
         raise BuildError(f"Error compiling ASM: {e}")
     return bytes.fromhex(compiled_c2)
+

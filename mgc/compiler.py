@@ -13,11 +13,10 @@ def _init_new_gci() -> melee_gamedata:
     init_gci_path = Path(__file__).parent/"init_gci"/"init_gci.mgc"
     silent = logger.silent_log
     logger.silent_log = True
-    state = CompilerState()
-    state = src(str(init_gci_path), state.copy())
+    state = src(str(init_gci_path), CompilerState())
     gci_data = bytearray(0x16040)
-    for entry in state.write_table:
-        gci_data[entry.address:entry.address+len(entry.data)] = entry.data
+    for w in state.write_table:
+        gci_data[w.address:w.address+len(w.data)] = w.data
     logger.silent_log = silent
     return melee_gamedata(raw_bytes=gci_data)
 
@@ -43,7 +42,6 @@ def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=
     returns the raw bytes of the final GCI."""
     logger.silent_log = silent
     logger.debug_log = debug
-    state = CompilerState()
     if input_gci_path:
         logger.info("Loading and unpacking input GCI")
         input_gci = _load_gci(input_gci_path)
@@ -51,14 +49,14 @@ def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=
         logger.info("Initializing new GCI")
         input_gci = _init_new_gci()
     if root_mgc_path:
-        state = src(root_mgc_path, state.copy())
-    for entry in state.write_table:
-        input_gci.raw_bytes[entry.address:entry.address+len(entry.data)] = entry.data
-    if state.block_order:
-        input_gci.block_order = state.block_order
-        input_gci.reorder_blocks()
-    for entry in state.patch_table:
-        input_gci.raw_bytes[entry.address:entry.address+len(entry.data)] = entry.data
+        state = src(root_mgc_path, CompilerState())
+        for w in state.write_table:
+            input_gci.raw_bytes[w.address:w.address+len(w.data)] = w.data
+        if state.block_order:
+            input_gci.block_order = state.block_order
+            input_gci.reorder_blocks()
+        for w in state.patch_table:
+            input_gci.raw_bytes[w.address:w.address+len(w.data)] = w.data
     input_gci.recompute_checksums()
     if not nopack:
         logger.info("Packing GCI")
