@@ -95,11 +95,10 @@ def _build_mgcfile(path: Path, data: list[str]) -> list[MGCLine]:
                 if not line.is_command(script_line, asm_cmd + 'end'):
                     asm_lines.append(script_line)
                     continue
-                asmtext = '\n'.join(asm_lines)
                 if asm_cmd == 'c2':
-                    asmdata = asm.compile_c2(asmtext, asm_args[0])
+                    asmdata = asm.compile_c2(asm_lines, asm_args[0])
                 else:
-                    asmdata = asm.compile_asm(asmtext)
+                    asmdata = asm.compile_asm(asm_lines)
                 op_lines.append(MGCLine(c.line_number, asm_cmd, [asmdata]))
                 asm_cmd = ''
                 asm_args = []
