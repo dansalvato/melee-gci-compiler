@@ -4,7 +4,7 @@ import struct
 
 from .gci_encode import decode_byte as unpack
 from .gci_encode import encode_byte as pack
-from ..logger import log
+from .. import logger
 
 class melee_gci(object):
     """ Base class for GCI files. Just basic setter/getter stuff for dentry
@@ -18,7 +18,7 @@ class melee_gci(object):
                     self.raw_bytes = bytearray(fd.read())
                 self.filesize = len(self.raw_bytes)
                 self.packed = packed
-                log('DEBUG', "Read {} bytes from input GCI".format(hex(self.filesize)))
+                logger.debug("Read {} bytes from input GCI".format(hex(self.filesize)))
             except FileNotFoundError:
                 raise
         elif raw_bytes:
@@ -164,10 +164,10 @@ class melee_gamedata(melee_gci):
         # If current checksums don't match, write them back
         for i in range(0, self.blocksize()-1):
             if (current[i] != computed[i]):
-                log('DEBUG', "Block {} checksum mismatch, fixing ..".format(i))
+                logger.debug("Block {} checksum mismatch, fixing ..".format(i))
                 self.set_raw_checksum(i, computed[i])
             else:
-                log('DEBUG', "Block {} checksum unchanged".format(i))
+                logger.debug("Block {} checksum unchanged".format(i))
 
     def get_block(self, blknum):
         ''' Get the data portion of some block '''
@@ -196,7 +196,7 @@ class melee_gamedata(melee_gci):
         if (self.packed is False):
             raise Exception("Data is already unpacked - refusing to unpack")
 
-        log('DEBUG', "Unpacking GCI data")
+        logger.debug("Unpacking GCI data")
 
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050
@@ -218,7 +218,7 @@ class melee_gamedata(melee_gci):
         if (self.packed is True):
             raise Exception("Data is already packed -- refusing to pack")
 
-        log('DEBUG', "Packing GCI data")
+        logger.debug("Packing GCI data")
 
         PREV_BYTE_OFFSET = 0x204f
         BASE_OFFSET = 0x2050

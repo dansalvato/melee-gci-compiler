@@ -75,13 +75,15 @@ example script and try compiling it yourself.
 
 ## Bugs
 
-The script parsing methods used in Melee GCI Compiler are not incredibly
-thorough nor strict in text formatting requirements. It's quite likely that you
-will succeed in breaking the compiler if you set out to do so. No johns if
-something breaks because you tried to break it. Consider picking up
-speedrunning, though.
+The most obvious sign of bugs is if you receive a Python stack trace - that
+means some case has been unhandled. If you want to hunt for bugs, try to cause
+stack traces and report them in the issue tracker!
 
-## Credits
+If you believe MGC is mistakenly logging an error or some data is not being
+compiled correctly, please feel free to submit those issues as well, and they
+will be reviewed.
+
+## Attributions
 
 Thanks to wParam for discovering and documenting the Melee save file exploit.
 

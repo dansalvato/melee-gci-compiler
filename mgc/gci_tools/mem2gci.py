@@ -72,26 +72,27 @@ def gci2mem(gci_address: int) -> int:
         raise ValueError("GCI address 0x%05x does not have a corresponding Melee memory location" % gci_address)
     return MEM_LIST[block_number] + offset
 
-def data2gci(mem_start_address: int, data_length: int) -> List[Tuple[int, int]]:
-    """Returns a list of GCI offsets and data lengths that directly correspond
-       to the specified Melee memory address and data length. The data at these
-       GCI offsets, in order, will load into Melee as a contiguous data block
-       at the specified address."""
-    if data_length <= 0:
+def data2gci(mem_start_address: int, data: bytes) -> List[Tuple[int, bytes]]:
+    """Takes a Melee address and bytes of data, and returns them in a list of
+    GCI offsets and data blocks that correspond exactly to where the data
+    should go in the GCI."""
+    if not data:
         raise ValueError("Data length must be greater than 0.")
     if mem_start_address < MEM_START:
         raise ValueError("Start address 0x%08x is not present in the GCI; earliest possible start address is 0x%08x" % (mem_start_address, MEM_START))
-    if mem_start_address + data_length > MEM_END:
-        raise ValueError("Data ends at 0x%08x which overflows the last address present in the GCI (0x%08x)" % (mem_start_address + data_length, MEM_END))
+    if mem_start_address + len(data) > MEM_END:
+        raise ValueError("Data ends at 0x%08x which overflows the last address present in the GCI (0x%08x)" % (mem_start_address + len(data), MEM_END))
     current_address = mem_start_address
-    remaining_data = data_length
-    gci_list: List[Tuple[int, int]] = []
+    remaining_data = len(data)
+    gci_list: List[Tuple[int, bytes]] = []
+    data_pointer = 0
     while remaining_data > 0:
         current_block_number, current_offset = mem2gci_tuple(current_address)
         current_gci_address = BLOCK_LIST[current_block_number] + current_offset
         amount_block_can_fit = BLOCK_SIZE[current_block_number] - current_offset
-        gci_list.append((current_gci_address, min(remaining_data, amount_block_can_fit)))
+        gci_list.append((current_gci_address, data[data_pointer:data_pointer+min(remaining_data, amount_block_can_fit)]))
         remaining_data -= amount_block_can_fit
         current_address += amount_block_can_fit
+        data_pointer += amount_block_can_fit
     return gci_list
 
