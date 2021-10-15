@@ -13,7 +13,7 @@ _NOP = ('', [])
 def parse(line: str, desired_command: str='') -> tuple[str, list]:
     """Parses the MGC script line string into a command and arguments."""
     line = line.split('#')[0]
-    line = _replace_aliases(line)
+    line = _replace_aliases(line, not desired_command)
     line = line.strip()
     if not line:
         return _NOP
@@ -42,11 +42,11 @@ def is_command(line: str, desired_command: str) -> bool:
     return parse(line, desired_command) is not _NOP
 
 
-def _replace_aliases(line: str) -> str:
+def _replace_aliases(line: str, warn: bool=True) -> str:
     """Replaces aliases with their defined values during parse."""
     for key, value in _aliases.items():
         line = line.replace(key, value)
-    if re.search(r'\[.*\]', line):
+    if warn and re.search(r'\[.*\]', line):
         logger.warning("No matching alias, taking brackets literally")
     return line
 
