@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """melee-gci-compiler.py: Compiles custom data into Melee GCI save files using
    MGC script files"""
-
-import sys, getopt
+import sys
+import getopt
 import hashlib
 from pathlib import Path
 import mgc.compiler as compiler
@@ -10,7 +10,7 @@ import mgc.logger as logger
 from mgc.errors import CompileError
 
 USAGE_TEXT = """\
-Usage: melee-gci-compiler.py [options] [script_path]
+Usage: melee_gci_compiler.py [options] [script_path]
 
 script_path    The path to the MGC script file you want to compile.
 -i             Optionally input a Melee GCI to use its existing data as a base.

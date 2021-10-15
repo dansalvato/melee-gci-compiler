@@ -1,4 +1,4 @@
-Usage: melee-gci-compiler.py [options] [script_path]
+Usage: melee_gci_compiler.py [options] [script_path]
 
 script_path    The path to the MGC script file you want to compile.
 -i             Optionally input a Melee GCI to use its existing data as a base.
