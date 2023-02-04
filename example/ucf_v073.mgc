@@ -25,7 +25,7 @@ The save file has three main components:
 
 # Displayed filename
 !loc 80461824
-!string "UCF Datafile"
+!string "UCF Save"
 
 # Default Tournament Settings
 !loc 80461830
