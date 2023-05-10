@@ -21,30 +21,31 @@ def _init_new_gci() -> melee_gamedata:
     return melee_gamedata(raw_bytes=gci_data)
 
 
-def _load_gci(gci_path: str) -> melee_gamedata:
+def _load_gci(gci_path: str, unpacked=False) -> melee_gamedata:
     """Creates a gamedata object by loading an existing GCI file."""
     try:
-        input_gci = melee_gamedata(filename=gci_path, packed=True)
+        input_gci = melee_gamedata(filename=gci_path, packed=not unpacked)
     except FileNotFoundError:
         raise CompileError(f"Input GCI not found: {gci_path}")
-    try:
-        input_gci.unpack()
-    except Exception as e:
-        raise CompileError(f"GCI decoder: {e}")
+    if not unpacked:
+        try:
+            input_gci.unpack()
+        except Exception as e:
+            raise CompileError(f"GCI decoder: {e}")
     gci_data = input_gci.raw_bytes
     if len(gci_data) != 0x16040:
         raise CompileError(f"Input GCI is the wrong size; make sure it's a Melee save file")
     return input_gci
 
 
-def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False) -> bytearray:
+def init(root_mgc_path: str=None, input_gci_path: str=None, silent=False, debug=False, nopack=False, unpacked_input=False) -> bytearray:
     """Begins compilation by taking a root MGC path and parameters, then
     returns the raw bytes of the final GCI."""
     logger.silent_log = silent
     logger.debug_log = debug
     if input_gci_path:
         logger.info("Loading and unpacking input GCI")
-        input_gci = _load_gci(input_gci_path)
+        input_gci = _load_gci(input_gci_path, unpacked_input)
     else:
         logger.info("Initializing new GCI")
         input_gci = _init_new_gci()

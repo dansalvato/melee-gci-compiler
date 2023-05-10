@@ -47,6 +47,7 @@ def main(argv):
             case '-i': input_gci = arg
             case '-o': output_gci = arg
             case '--nopack': nopack = True
+            case '--unpacked': unpacked_input = True
             case '--silent': silent = True
             case '--debug': debug = True
             case _: error = True
@@ -59,7 +60,8 @@ def main(argv):
         logger.warning("No MGC script specified; no custom data will be compiled")
     try:
         gci_data = compiler.init(script_path, input_gci_path=input_gci,
-                                 nopack=nopack, silent=silent, debug=debug)
+                                 nopack=nopack, silent=silent, debug=debug,
+                                 unpacked_input=unpacked_input)
     except CompileError as e:
         if debug:
             raise
