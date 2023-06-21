@@ -1,86 +1,84 @@
 #!/usr/bin/env python3
 """melee-gci-compiler.py: Compiles custom data into Melee GCI save files using
    MGC script files"""
+import argparse
 import sys
-import getopt
 import hashlib
 from pathlib import Path
 import mgc.compiler as compiler
 import mgc.logger as logger
 from mgc.errors import CompileError
 
-USAGE_TEXT = """\
-Usage: melee_gci_compiler.py [options] [script_path]
 
-script_path    The path to the MGC script file you want to compile.
--i             Optionally input a Melee GCI to use its existing data as a base.
--o             The GCI file to output. If omitted, no data will be written.
--h, --help     Displays this usage text.
---nopack       Do not pack the GCI, so you can inspect the outputted data.
---silent       Suppress command line output, except for fatal errors.
---debug        Output extra information while compiling and on errors.
+def _read_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+            epilog="You can omit script_path to pack or unpack a GCI without changing its content."
+    )
 
-You can omit script_path to pack or unpack a GCI without changing its content.
-"""
+    parser.add_argument(
+            "script_path",
+            nargs="?",
+            type=str,
+            help="The path to the MGC script file you want to compile."
+    )
+    parser.add_argument(
+            "-i",
+            dest="input_gci",
+            type=str,
+            help="Optionally input a Melee GCI to use its existing data as a base."
+    )
+    parser.add_argument(
+            "-o",
+            dest="output_gci",
+            type=str,
+            help="The GCI file to output. If omitted, no data will be written."
+    )
+    parser.add_argument(
+            "--nopack",
+            action="store_true",
+            help="Do not pack the GCI, so you can inspect the outputted data."
+    )
+    parser.add_argument(
+            "--silent",
+            action="store_true",
+            help="Suppress command line output, except for fatal errors."
+    )
+    parser.add_argument(
+            "--debug",
+            action="store_true",
+            help="Output extra information while compiling and on errors."
+    )
+
+    return parser.parse_args()
 
 
-def main(argv):
-    try:
-        opts, args = getopt.getopt(argv[1:],'i:o:h',['help','nopack','silent','debug'])
-    except getopt.GetoptError:
-        return 2
-    if len(args) > 1:
-        return 2
-    elif len(args) == 0 and len(opts) == 0:
-        return 0
-    script_path = args[0] if args else None
-    input_gci = None
-    output_gci = None
-    nopack = False
-    silent = False
-    debug = False
-    usage = False
-    error = False
-    for opt, arg in opts:
-        match opt:
-            case '-h'|'--help': usage = True
-            case '-i': input_gci = arg
-            case '-o': output_gci = arg
-            case '--nopack': nopack = True
-            case '--silent': silent = True
-            case '--debug': debug = True
-            case _: error = True
-    if usage:
-        print(USAGE_TEXT)
-        return 0
-    if error:
-        return 2
-    if not script_path:
+def main(args: argparse.Namespace):
+    if not args.script_path:
         logger.warning("No MGC script specified; no custom data will be compiled")
     try:
-        gci_data = compiler.init(script_path, input_gci_path=input_gci,
-                                 nopack=nopack, silent=silent, debug=debug)
+        gci_data = compiler.init(args.script_path, input_gci_path=args.input_gci,
+                                 nopack=args.nopack, silent=args.silent, debug=args.debug)
     except CompileError as e:
-        if debug:
+        if args.debug:
             raise
         else:
             logger.error(e.message)
-            _cleanup(script_path)
+            _cleanup(args.script_path)
             return 10
     logger.info("Compile successful")
-    if not output_gci:
+    if not args.output_gci:
         logger.info("No output GCI specified; no files will be written")
     else:
-        if nopack:
+        if args.nopack:
             msg = "Writing unpacked GCI file; not loadable by Melee"
         else:
             msg = "Writing final GCI file"
         logger.info(msg)
-        _write_gci(output_gci, gci_data, debug)
+        _write_gci(args.output_gci, gci_data, args.debug)
     md5 = hashlib.md5(gci_data).hexdigest()
     logger.info(f"MD5: {md5}")
     logger.info("All tasks finished")
-    _cleanup(script_path)
+    _cleanup(args.script_path)
     return 0
 
 
@@ -112,8 +110,4 @@ def _cleanup(script_path):
 
 
 if __name__ == "__main__":
-    r = main(sys.argv)
-    if r == 2:
-        print(USAGE_TEXT)
-    sys.exit(r)
-
+    sys.exit(main(_read_args()))

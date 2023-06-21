@@ -1,11 +1,17 @@
-Usage: melee_gci_compiler.py [options] [script_path]
+usage: melee_gci_compiler.py [-h] [-i INPUT_GCI] [-o OUTPUT_GCI] [--nopack]
+                             [--silent] [--debug]
+                             [script_path]
 
-script_path    The path to the MGC script file you want to compile.
--i             Optionally input a Melee GCI to use its existing data as a base.
--o             The GCI file to output. If omitted, no data will be written.
--h, --help     Displays this usage text.
---nopack       Do not pack the GCI, so you can inspect the outputted data.
---silent       Suppress command line output, except for fatal errors.
---debug        Output extra information while compiling and on errors.
+positional arguments:
+  script_path    The path to the MGC script file you want to compile.
+
+options:
+  -h, --help     show this help message and exit
+  -i INPUT_GCI   Optionally input a Melee GCI to use its existing data as a
+                 base.
+  -o OUTPUT_GCI  The GCI file to output. If omitted, no data will be written.
+  --nopack       Do not pack the GCI, so you can inspect the outputted data.
+  --silent       Suppress command line output, except for fatal errors.
+  --debug        Output extra information while compiling and on errors.
 
 You can omit script_path to pack or unpack a GCI without changing its content.
